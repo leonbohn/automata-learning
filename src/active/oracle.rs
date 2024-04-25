@@ -4,6 +4,98 @@ use crate::passive::Sample;
 
 use super::LStarHypothesis;
 
+pub type Counterexample<A, O> = (Vec<<A as Alphabet>::Symbol>, O);
+
+pub trait Hypothesis {
+    type Alphabet: Alphabet;
+    type Output: Color;
+    type StateIndex: IndexType;
+
+    fn initial(&self) -> Self::StateIndex;
+    fn reached_index_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+        &self,
+        input: W,
+        source: Self::StateIndex,
+    ) -> Self::StateIndex;
+    fn reached_index<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+        &self,
+        input: W,
+    ) -> Self::StateIndex {
+        self.reached_index_from(input, self.initial())
+    }
+    fn output_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+        &self,
+        input: W,
+        source: Self::StateIndex,
+    ) -> Self::Output;
+    fn output<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+        &self,
+        input: W,
+    ) -> Self::Output {
+        self.output_from(input, self.initial())
+    }
+}
+
+pub trait Oracle {
+    type Alphabet: Alphabet;
+    type Output: Color;
+    fn output<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(&self, word: W) -> Self::Output;
+    fn alphabet(&self) -> &Self::Alphabet;
+    fn equivalence<H>(
+        &self,
+        hypothesis: H,
+    ) -> Result<(), Counterexample<Self::Alphabet, Self::Output>>
+    where
+        H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>;
+}
+
+pub fn lstar<H, O>(oracle: O) -> H
+where
+    O: Oracle,
+    H: Hypothesis<Alphabet = O::Alphabet, Output = O::Output> + for<'a> From<&'a O::Alphabet>,
+{
+    oracle.alphabet().into()
+}
+
+impl<A: Alphabet, X: FiniteWord<A::Symbol>, C: Color> Oracle for SampleOracle<A, X, C> {
+    type Alphabet = A;
+
+    type Output = C;
+
+    fn output<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(&self, word: W) -> Self::Output {
+        self.sample
+            .words
+            .iter()
+            .find_map(|(k, v)| {
+                if word.equals(k) {
+                    Some(v.clone())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(self.default.clone())
+    }
+
+    fn equivalence<H>(
+        &self,
+        hypothesis: H,
+    ) -> Result<(), Counterexample<Self::Alphabet, Self::Output>>
+    where
+        H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>,
+    {
+        for (w, c) in &self.sample.words {
+            if !hypothesis.output(w).eq(c) {
+                return Err((w.to_vec(), c.clone()));
+            }
+        }
+        Ok(())
+    }
+
+    fn alphabet(&self) -> &Self::Alphabet {
+        self.sample.alphabet()
+    }
+}
+
 /// A trait that encapsulates a minimally adequate teacher (MAT) for active learning. This is mainly used by
 /// L*-esque algorithms and can be implemented by wildly different types, for example an automaton, a function
 /// or even a collection of words.
