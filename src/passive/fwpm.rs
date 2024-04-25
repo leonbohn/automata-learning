@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use automata::{
-    automaton::{MealyLike, MooreLike},
     congruence::FORC,
     prelude::{Indexes, MealyMachine, MooreMachine},
     Alphabet, Map, RightCongruence, TransitionSystem,

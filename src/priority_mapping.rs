@@ -4,8 +4,6 @@ use impl_tools::autoimpl;
 use owo_colors::OwoColorize;
 
 use automata::{
-    automaton::MooreLike,
-    congruence::ColoredClass,
     dag::Dag,
     prelude::*,
     transition_system::dot::{DotStateAttribute, Dottable},
@@ -121,7 +119,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
         // idempotent that it contains.
         let tjdag = self.0.tarjan_dag();
         let mut dag: Dag<Result<usize, Option<bool>>> =
-            tjdag.fold_state_colors(Err(None), |acc, x| match (acc, x.color().good) {
+            tjdag.fold_state_colors(Err(None), |acc, x| match (acc, x.good) {
                 (Err(None), None) => Err(None),
                 (Err(Some(x)), Some(y)) => Err(Some(x || y)),
                 (Err(Some(x)), None) => Err(Some(x)),

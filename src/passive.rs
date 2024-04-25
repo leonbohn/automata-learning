@@ -1,5 +1,4 @@
 use automata::{
-    congruence::ColoredClass,
     prelude::*,
     transition_system::{operations::MapStateColor, IndexedAlphabet},
 };

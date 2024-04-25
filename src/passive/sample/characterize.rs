@@ -27,7 +27,7 @@ use crate::{
 use super::{FiniteSample, OmegaSample, Sample};
 type DFASample<D> = FiniteSample<<D as TransitionSystem>::Alphabet, bool>;
 
-fn dpa<M: DPALike>(dpa: IntoDPA<M>) -> OmegaSample<M::Alphabet, bool>
+fn dpa<M: Congruence<EdgeColor = usize>>(dpa: IntoDPA<M>) -> OmegaSample<M::Alphabet, bool>
 where
     M: Clone,
 {
@@ -50,7 +50,7 @@ where
     sample
 }
 
-fn right_congruence_by_omega_words<M: DPALike>(
+fn right_congruence_by_omega_words<M: Congruence<EdgeColor = usize>>(
     cong: &Quotient<M>,
 ) -> OmegaSample<M::Alphabet, bool> {
     let start = std::time::Instant::now();
@@ -202,7 +202,11 @@ impl<Idx: IndexType, C: Color> StateCollection<Idx, C> for BTreeSet<(Idx, C)> {
     }
 }
 
-fn priority_mapping_set_backed<D: DPALike, X: Borrow<D::StateIndex>, I: IntoIterator<Item = X>>(
+fn priority_mapping_set_backed<
+    D: Congruence<EdgeColor = usize>,
+    X: Borrow<D::StateIndex>,
+    I: IntoIterator<Item = X>,
+>(
     dpa: D,
     initial: I,
 ) -> MooreMachine<D::Alphabet, D::EdgeColor> {
@@ -218,7 +222,10 @@ fn priority_mapping_set_backed<D: DPALike, X: Borrow<D::StateIndex>, I: IntoIter
             .collect::<BTreeSet<_>>(),
     )
 }
-fn priority_mapping_vec_backed<D: DPALike, I: IntoIterator<Item = D::StateIndex>>(
+fn priority_mapping_vec_backed<
+    D: Congruence<EdgeColor = usize>,
+    I: IntoIterator<Item = D::StateIndex>,
+>(
     dpa: D,
     initial: I,
 ) -> MooreMachine<D::Alphabet, D::EdgeColor> {
@@ -240,7 +247,7 @@ fn build_generic_priority_mapping<D, Coll>(
     initial: Coll,
 ) -> MooreMachine<D::Alphabet, D::EdgeColor>
 where
-    D: DPALike,
+    D: Congruence<EdgeColor = usize>,
     Coll: StateCollection<D::StateIndex, D::EdgeColor>,
 {
     let start = std::time::Instant::now();
@@ -284,7 +291,7 @@ where
                     .expect("DPA must be deterministic and complete");
                 (t.target(), std::cmp::min(c, t.color()))
             }));
-            trace!("Computed successor on {}: {}", sym.show(), successor.show());
+            trace!("Computed successor on {}: {}", sym.show(), successor);
             let max_color = successor.pair_iter().map(|(_, c)| c).max().unwrap();
 
             if max_color == neutral_low {
@@ -294,7 +301,7 @@ where
                         "Adding edge to existing sink {idx}! {source}:{} --{}|{max_color}--> {idx}{}",
                         state_with_color.show(),
                         sym.show(),
-                        successor.show()
+                        successor
                     );
                     cong.add_edge(source, dpa.make_expression(sym), idx, max_color);
                     continue 'symbols;
@@ -309,7 +316,7 @@ where
                 trace!("Creating sink state {idx} and adding transition {source}:{} --{}|{max_color}--> {idx}{}",
                     state_with_color.show(),
                     sym.show(),
-                    successor.show()
+                    successor
                 );
                 cong.add_edge(source, dpa.make_expression(sym), idx, max_color);
                 sink = Some(idx);
@@ -321,7 +328,7 @@ where
                     "Knwon target {idx}. Adding transition {source}:{} --{}|{max_color}--> {idx}{}",
                     state_with_color.show(),
                     sym.show(),
-                    successor.show()
+                    successor
                 );
                 cong.add_edge(source, dpa.make_expression(sym), idx, max_color);
                 continue 'symbols;
@@ -332,7 +339,7 @@ where
                 "Adding transition {source}:{} --{}|{max_color}--> {idx}{}",
                 state_with_color.show(),
                 sym.show(),
-                successor.show()
+                successor
             );
             cong.add_edge(source, dpa.make_expression(sym), idx, max_color);
 
@@ -364,7 +371,7 @@ where
     todo!()
 }
 
-pub fn actively_exchanged_words_dfa<D: DFALike>(dfa: D) -> DFASample<D> {
+pub fn actively_exchanged_words_dfa<D: Congruence<EdgeColor = usize>>(dfa: D) -> DFASample<D> {
     todo!()
 }
 
@@ -389,7 +396,7 @@ mod tests {
     use std::time::Instant;
 
     use automata::{
-        automaton::{DPALike, MealyLike, MooreLike, DPA},
+        automaton::DPA,
         transition_system::{Deterministic, Dottable, NTS},
         TransitionSystem,
     };

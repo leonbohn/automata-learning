@@ -5,7 +5,7 @@ use fixedbitset::FixedBitSet;
 use itertools::Itertools;
 use tracing::{debug, info, trace};
 
-use super::oracle::LStarOracle;
+use super::{oracle::Oracle, ObservationTable};
 
 const ITERATION_THRESHOLD: usize = if cfg!(debug_assertions) { 300 } else { 200000 };
 
@@ -42,7 +42,7 @@ pub type Experiments<D> = Vec<Word<D>>;
 
 /// An implementation of the L* algorithm.
 #[derive(Clone)]
-pub struct LStar<D: LStarHypothesis, T: LStarOracle<D>> {
+pub struct LStar<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> {
     // the alphabet of what we are learning
     alphabet: D::Alphabet,
     // a mapping containing all queries that have been posed so far, together with their output
@@ -56,36 +56,10 @@ pub struct LStar<D: LStarHypothesis, T: LStarOracle<D>> {
     table: Map<Word<D>, Vec<D::Color>>,
     // the oracle
     oracle: T,
+    observations: ObservationTable<SymbolOf<D>, T::Output>,
 }
 
-impl<T: LStarOracle<DFA>> LStar<DFA, T> {
-    pub fn dfa(oracle: T) -> DFA {
-        Self::new(oracle.alphabet(), oracle).infer()
-    }
-    pub fn for_dfa(alphabet: CharAlphabet, oracle: T) -> LStar<DFA, T> {
-        Self::new(alphabet, oracle)
-    }
-}
-
-impl<T: LStarOracle<MealyMachine<CharAlphabet>>> LStar<MealyMachine<CharAlphabet>, T> {
-    pub fn mealy(oracle: T) -> MealyMachine<CharAlphabet> {
-        Self::new(oracle.alphabet(), oracle).infer()
-    }
-    pub fn for_mealy(alphabet: CharAlphabet, oracle: T) -> LStar<MealyMachine<CharAlphabet>, T> {
-        Self::new(alphabet, oracle)
-    }
-}
-
-impl<T: LStarOracle<MooreMachine<CharAlphabet>>> LStar<MooreMachine<CharAlphabet>, T> {
-    pub fn moore(alphabet: CharAlphabet, oracle: T) -> MooreMachine<CharAlphabet> {
-        Self::new(alphabet, oracle).infer()
-    }
-    pub fn for_moore(alphabet: CharAlphabet, oracle: T) -> LStar<MooreMachine<CharAlphabet>, T> {
-        Self::new(alphabet, oracle)
-    }
-}
-
-impl<D: LStarHypothesis, T: LStarOracle<D>> LStar<D, T> {
+impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> LStar<D, T> {
     pub fn new(alphabet: D::Alphabet, oracle: T) -> Self {
         Self {
             experiments: D::mandatory_experiments(&alphabet).into_iter().collect(),
@@ -94,6 +68,10 @@ impl<D: LStarHypothesis, T: LStarOracle<D>> LStar<D, T> {
             base: vec![vec![]],
             table: Map::default(),
             oracle,
+            observations: ObservationTable::with_rows_and_experiments(
+                [],
+                D::mandatory_experiments(&alphabet),
+            ),
         }
     }
 
@@ -254,7 +232,7 @@ impl<D: LStarHypothesis, T: LStarOracle<D>> LStar<D, T> {
 
                 let added = ts.add_edge(
                     *i,
-                    <D::Alphabet as Alphabet>::expression(a),
+                    self.alphabet().expression(a),
                     *state_map.get(target).unwrap(),
                     color,
                 );
@@ -353,7 +331,7 @@ impl<D: LStarHypothesis, T: LStarOracle<D>> LStar<D, T> {
     }
 }
 
-impl<D: LStarHypothesis, T: LStarOracle<D>> std::fmt::Debug for LStar<D, T> {
+impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for LStar<D, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut builder = tabled::builder::Builder::default();
         let mut header = vec!["MR".to_string()];
@@ -386,82 +364,11 @@ mod tests {
     use owo_colors::OwoColorize;
 
     use crate::{
-        active::{
-            oracle,
-            oracle::{DFAOracle, LStarOracle},
-        },
+        active::{oracle, oracle::DFAOracle},
         passive::FiniteSample,
     };
 
     use super::LStar;
-
-    struct ModkAmodlB(CharAlphabet);
-    struct WordLenModk(CharAlphabet, usize);
-
-    impl LStarOracle<MooreMachine<CharAlphabet>> for ModkAmodlB {
-        fn output<W: FiniteWord<char>>(&self, word: W) -> usize {
-            let (count_a, count_b) = word.symbols().fold((0, 0), |(a, b), c| match c {
-                'a' => (a + 1, b),
-                'b' => (a, b + 1),
-                _ => unreachable!(),
-            });
-
-            if count_a % 2 == 0 && count_b % 2 == 0 {
-                1
-            } else {
-                0
-            }
-        }
-
-        fn equivalence(
-            &self,
-            hypothesis: &MooreMachine<CharAlphabet>,
-        ) -> Result<(), (Vec<char>, usize)> {
-            for word in [
-                "aa", "bb", "bab", "aba", "abba", "bbab", "", "b", "a", "abaaabab", "bbababa",
-            ] {
-                let output = self.output(word);
-                if output
-                    != hypothesis
-                        .try_moore_map(word)
-                        .expect("Hypothesis should be complete")
-                {
-                    return Err((word.chars().collect(), output));
-                }
-            }
-            Ok(())
-        }
-
-        fn alphabet(&self) -> CharAlphabet {
-            CharAlphabet::from_iter(['a', 'b'])
-        }
-    }
-
-    #[cfg(test)]
-    impl LStarOracle<MooreMachine<CharAlphabet, usize>> for WordLenModk {
-        fn output<W: FiniteWord<char>>(&self, word: W) -> usize {
-            word.len() % self.1
-        }
-
-        fn equivalence(
-            &self,
-            hypothesis: &MooreMachine<CharAlphabet, usize>,
-        ) -> Result<(), (Vec<char>, usize)> {
-            for word in [
-                "aa", "bb", "bab", "bbabba", "aba", "abba", "bbab", "", "b", "a",
-            ] {
-                let output = self.output(word);
-                if output != hypothesis.try_moore_map(word).unwrap() {
-                    return Err((word.to_vec(), output));
-                }
-            }
-            Ok(())
-        }
-
-        fn alphabet(&self) -> CharAlphabet {
-            vec!['a', 'b'].into()
-        }
-    }
 
     #[test]
     fn lstar_word_len_mod_k() {

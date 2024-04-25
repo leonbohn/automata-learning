@@ -1,14 +1,13 @@
 use std::fmt::Debug;
 
 use automata::{
-    automaton::{DPALike, MealyLike, MooreLike, DPA},
-    congruence::ColoredClass,
+    automaton::{DFASemantics, DPA},
     prelude::{Expression, IsEdge, DFA},
     transition_system::{
         dot::{DotStateAttribute, DotTransitionAttribute},
         reachable::ReachableStateIndices,
-        Deterministic, Dottable, EdgeColor, ExpressionOf, IndexType, Indexes, Sproutable,
-        StateColor,
+        Congruence, Deterministic, Dottable, EdgeColor, ExpressionOf, IndexType, Indexes,
+        Sproutable, StateColor, DTS,
     },
     Alphabet, Map, Pointed, RightCongruence, Show, TransitionSystem, Void,
 };
@@ -74,16 +73,6 @@ pub struct PState<const N: usize> {
     class: usize,
     progress_classes: [usize; N],
     progress_states: [usize; N],
-}
-
-impl<const N: usize> IndexType for PState<N> {
-    fn first() -> Self {
-        Self {
-            class: 0,
-            progress_classes: [0; N],
-            progress_states: [0; N],
-        }
-    }
 }
 
 impl<const N: usize> Show for PState<N> {
@@ -441,11 +430,15 @@ impl<A: Alphabet, const N: usize> Debug for PreciseDPA<A, N> {
 }
 
 fn padding_universal_dfa<A: Alphabet>(alphabet: &A) -> DFA<A> {
-    let mut dfa = DFA::new_for_alphabet(alphabet.clone());
+    let mut dfa = DFA::from_parts(
+        DTS::with_capacity(alphabet.clone(), 1).with_initial(0),
+        0,
+        DFASemantics,
+    );
     let e = dfa.add_state(true);
 
     for sym in alphabet.universe() {
-        dfa.add_edge(e, A::expression(sym), e, Void);
+        dfa.add_edge(e, alphabet.make_expression(sym), e, Void);
     }
     dfa
 }
@@ -551,7 +544,7 @@ mod tests {
                 (1, 'b', Void, 1),
                 (1, 'c', Void, 1),
             ])
-            .with_colors([false, true])
+            .with_state_colors([false, true])
             .into_dfa(0);
         let da0 = NTS::builder()
             .with_transitions([
@@ -562,7 +555,7 @@ mod tests {
                 (1, 'b', Void, 1),
                 (1, 'c', Void, 1),
             ])
-            .with_colors([false, true])
+            .with_state_colors([false, true])
             .into_dfa(0);
 
         let de1 = NTS::builder()
@@ -577,7 +570,7 @@ mod tests {
                 (2, 'b', Void, 2),
                 (2, 'c', Void, 2),
             ])
-            .with_colors([false, false, true])
+            .with_state_colors([false, false, true])
             .into_dfa(0);
 
         let full = NTS::builder()
@@ -589,7 +582,7 @@ mod tests {
                 (1, 'b', Void, 1),
                 (1, 'c', Void, 1),
             ])
-            .with_colors([false, true])
+            .with_state_colors([false, true])
             .into_dfa(0);
 
         let dfas_e = [de0, de1, full.clone()];
