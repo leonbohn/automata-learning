@@ -154,21 +154,24 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             *dag.color_mut(t).expect("This node exists") = Ok(i + offset);
         }
 
+        let state_coloring: automata::math::Map<_, _> = self
+            .0
+            .state_indices()
+            .map(|i| {
+                let scc = tjdag.get(i).expect("Must be in an SCC");
+                let info = dag.color(scc).expect("Must have worked on that SCC");
+                (i, info.expect("Every SCC must have a color"))
+            })
+            .collect();
+
         (&self.0)
             .map_edge_colors_full(|_q, _e, _c, p| {
                 let scc = tjdag.get(p).expect("Must be in an SCC");
                 let info = dag.color(scc).expect("Must have worked on that SCC");
                 info.expect("Every SCC must have a color")
             })
-            .map_state_colors(|q| {
-                let scc = tjdag.get(q).expect("Must be in an SCC");
-                let info = dag.color(scc).expect("Must have worked on that SCC");
-
-                info.expect("Every SCC must have a color")
-            })
-            .collect_pointed()
-            .0
-            .into_moore()
+            .with_state_color(state_coloring)
+            .collect_moore()
     }
 
     /// Takes a reference to a right congruence and a function that classifies idempotents
@@ -179,21 +182,25 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
         C: Clone,
         F: ClassifiesIdempotents<A>,
     {
-        let cong = rc
-            .erase_edge_colors()
-            .map_state_colors(|c| {
-                let cls = c.class();
-                if !cls.is_empty() && rc.is_idempotent(cls) {
+        let annotations: automata::math::Map<_, _> = rc
+            .state_indices()
+            .map(|i| {
+                let cls = rc.class_name(i).unwrap();
+                let out = if !cls.is_empty() && rc.is_idempotent(cls) {
                     let b = f.classify(cls);
                     Annotation::new(true, b)
                 } else {
                     Annotation::new(false, None)
-                }
+                };
+                (i, out)
             })
-            .collect_pointed::<DTS<_, Annotation, Void>>()
-            .0;
-        let rc = RightCongruence::from_ts(cong);
-        Self::new(rc)
+            .collect();
+
+        Self::new(
+            rc.with_state_color(annotations)
+                .erase_edge_colors()
+                .right_congruence(),
+        )
     }
 }
 

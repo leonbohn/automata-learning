@@ -74,15 +74,9 @@ impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
                 .filter(|ProductIndex(rcong, _)| rcong == &lcong)
             {
                 if lcong == *rcong && self.conflicts.contains(&(ldfa, *rdfa)) {
-                    let lname = self.dfas[0]
-                        .state_color(ldfa)
-                        .expect("Every state must have a color!");
-                    let rname = self.dfas[1]
-                        .state_color(*rdfa)
-                        .expect("Every state must have a color!");
-                    let congname = cong
-                        .state_color(lcong)
-                        .expect("Every state must have a color!");
+                    let lname = ldfa.show();
+                    let rname = rdfa.show();
+                    let congname = lcong.show();
                     trace!("\t\tConflict found, ({congname}, {lname}) and ({congname}, {rname}) reachable with ({lname}, {rname}) in conflicts");
                     return false;
                 }

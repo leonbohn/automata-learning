@@ -1,6 +1,9 @@
 use automata::{
     prelude::*,
-    transition_system::{operations::MapStateColor, IndexedAlphabet},
+    transition_system::{
+        operations::{DefaultIfMissing, MapStateColor},
+        IndexedAlphabet,
+    },
 };
 use owo_colors::OwoColorize;
 use tracing::{debug, trace};
@@ -36,23 +39,18 @@ pub mod precise;
 /// a classes as accepting if it is reached by a positive sample word.
 pub fn dfa_rpni<A: Alphabet>(sample: &FiniteSample<A, bool>) -> DFA<A> {
     let cong = sprout::sprout(sample, vec![], true);
-    let accepting: automata::Set<_> = sample
+    let accepting = sample
         .positive_words()
         .map(|w| {
-            cong.reached_state_index(w)
-                .expect("Every positive word must induce a successful run!")
+            (
+                cong.reached_state_index(w)
+                    .expect("Every positive word must induce a successful run!"),
+                true,
+            )
         })
         .collect();
-    (&cong)
-        .map_state_colors(|q| {
-            let idx = cong
-                .class_to_index(q.class())
-                .expect("Class must be in the congruence!");
-            accepting.contains(&idx)
-        })
-        .collect_pointed()
-        .0
-        .into_dfa()
+    cong.with_state_color(DefaultIfMissing::new(accepting, false))
+        .collect_dfa()
 }
 
 /// Executes a variant of the RPNI algorithm for omega-words, producing a DBA.
@@ -114,12 +112,13 @@ pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet, bool>) -> DPA {
     let oracle = MealyOracle::new(mm, Some(0));
 
     let start = std::time::Instant::now();
-    let learned = LStar::for_mealy(alphabet, oracle).infer();
-    debug!(
-        "Learning representation of DPA with LStar took {}ms",
-        start.elapsed().as_millis()
-    );
-    learned.collect_dpa()
+    todo!()
+    // let learned = LStar::for_mealy(alphabet, oracle).infer();
+    // debug!(
+    //     "Learning representation of DPA with LStar took {}ms",
+    //     start.elapsed().as_millis()
+    // );
+    // learned.collect_dpa()
 }
 
 fn characterize_dpa(dpa: DPA) -> OmegaSample {

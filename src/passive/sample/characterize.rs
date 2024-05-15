@@ -31,23 +31,24 @@ fn dpa<M: Congruence<EdgeColor = usize>>(dpa: IntoDPA<M>) -> OmegaSample<M::Alph
 where
     M: Clone,
 {
-    let start = std::time::Instant::now();
-    let quot = dpa.prefix_congruence();
-    let cong = quot.collect_right_congruence_bare();
-    let mut sample = right_congruence_by_omega_words(&quot);
+    // let start = std::time::Instant::now();
+    // let quot = dpa.prefix_congruence();
+    // let cong = quot.collect_right_congruence_bare();
+    // let mut sample = right_congruence_by_omega_words(&quot);
 
-    for (i, class) in quot.partition().iter().enumerate() {
-        let class_pm = priority_mapping_set_backed(&dpa, class);
-        let cpm = CongruentPriorityMapping::new(&cong, i, class_pm.push_colors_to_outgoing_edges());
-        let class_sample = priority_mapping_by_omega_words(cpm);
-        sample.append(class_sample);
-    }
+    // for (i, class) in quot.partition().iter().enumerate() {
+    //     let class_pm = priority_mapping_set_backed(&dpa, class);
+    //     let cpm = CongruentPriorityMapping::new(&cong, i, class_pm.push_colors_to_outgoing_edges());
+    //     let class_sample = priority_mapping_by_omega_words(cpm);
+    //     sample.append(class_sample);
+    // }
 
-    info!(
-        "Computation of right congruence by prefix words took {}μs",
-        start.elapsed().as_micros()
-    );
-    sample
+    // info!(
+    //     "Computation of right congruence by prefix words took {}μs",
+    //     start.elapsed().as_micros()
+    // );
+    // sample
+    todo!()
 }
 
 fn right_congruence_by_omega_words<M: Congruence<EdgeColor = usize>>(
@@ -170,13 +171,13 @@ trait StateCollection<Idx, C>: Hash + Eq + Clone {
     }
     fn show(&self) -> String
     where
-        Idx: Display,
+        Idx: Show,
         C: Show,
     {
         format!(
             "{{{}}}",
             self.pair_iter()
-                .map(|(q, c)| format!("q{}|{}", q, c.show()))
+                .map(|(q, c)| format!("q{}|{}", q.show(), c.show()))
                 .join(", ")
         )
     }
@@ -258,12 +259,17 @@ where
         .expect("There needs to be at least one color");
     let neutral_low = dpa.edge_colors().min().unwrap();
 
-    let mut cong = MooreMachine::new_for_alphabet(dpa.alphabet().clone());
+    let mut ts = DTS::with_capacity(dpa.alphabet().clone(), dpa.size());
+    let initial_idx: usize = ts.add_state(neutral_high);
+    assert_eq!(initial_idx, 0);
+
+    let mut cong = MooreMachine::from_parts(
+        ts.with_initial(initial_idx),
+        initial_idx,
+        MooreSemantics::default(),
+    );
     let mut states = vec![initial];
     let show_state = |state: &BTreeSet<(D::StateIndex, usize)>| {};
-
-    let initial_idx: usize = cong.add_state(neutral_high);
-    assert_eq!(initial_idx, 0);
 
     let mut sink = None;
 
@@ -279,7 +285,7 @@ where
         let state_with_color = states.get(source).cloned().unwrap();
         trace!(
             "Processing state {} with signature {}",
-            owo_colors::OwoColorize::blue(&source.to_string()),
+            owo_colors::OwoColorize::blue(&source.show()),
             state_with_color.show(),
         );
 
@@ -291,7 +297,7 @@ where
                     .expect("DPA must be deterministic and complete");
                 (t.target(), std::cmp::min(c, t.color()))
             }));
-            trace!("Computed successor on {}: {}", sym.show(), successor);
+            trace!("Computed successor on {}: {}", sym.show(), successor.show());
             let max_color = successor.pair_iter().map(|(_, c)| c).max().unwrap();
 
             if max_color == neutral_low {
@@ -301,7 +307,7 @@ where
                         "Adding edge to existing sink {idx}! {source}:{} --{}|{max_color}--> {idx}{}",
                         state_with_color.show(),
                         sym.show(),
-                        successor
+                        successor.show()
                     );
                     cong.add_edge(source, dpa.make_expression(sym), idx, max_color);
                     continue 'symbols;
@@ -316,7 +322,7 @@ where
                 trace!("Creating sink state {idx} and adding transition {source}:{} --{}|{max_color}--> {idx}{}",
                     state_with_color.show(),
                     sym.show(),
-                    successor
+                    successor.show()
                 );
                 cong.add_edge(source, dpa.make_expression(sym), idx, max_color);
                 sink = Some(idx);
@@ -328,7 +334,7 @@ where
                     "Knwon target {idx}. Adding transition {source}:{} --{}|{max_color}--> {idx}{}",
                     state_with_color.show(),
                     sym.show(),
-                    successor
+                    successor.show()
                 );
                 cong.add_edge(source, dpa.make_expression(sym), idx, max_color);
                 continue 'symbols;
@@ -339,7 +345,7 @@ where
                 "Adding transition {source}:{} --{}|{max_color}--> {idx}{}",
                 state_with_color.show(),
                 sym.show(),
-                successor
+                successor.show()
             );
             cong.add_edge(source, dpa.make_expression(sym), idx, max_color);
 
@@ -397,7 +403,7 @@ mod tests {
 
     use automata::{
         automaton::DPA,
-        transition_system::{Deterministic, Dottable, NTS},
+        transition_system::{Congruence, Deterministic, Dottable, NTS},
         TransitionSystem,
     };
 
@@ -429,7 +435,10 @@ mod tests {
         pmvec.display_rendered().unwrap();
 
         let fwpm = FWPM::new(
-            mm.prefix_congruence().collect_right_congruence_bare(),
+            mm.prefix_congruence()
+                .erase_edge_colors()
+                .erase_state_colors()
+                .right_congruence(),
             [(0, pmset)].into_iter().collect(),
         );
 

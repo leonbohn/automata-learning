@@ -150,10 +150,8 @@ pub struct DFAOracle<A: Alphabet> {
 impl<A: Alphabet> DFAOracle<A> {
     /// Creates a new instance of a [`DFAOracle`] from the given automaton.
     pub fn new(automaton: DFA<A>) -> Self {
-        Self {
-            negated: automaton.negation().collect_dfa(),
-            automaton,
-        }
+        let negated = automaton.negation().collect_dfa();
+        Self { negated, automaton }
     }
 }
 
@@ -176,14 +174,7 @@ impl<A: Alphabet> Oracle for DFAOracle<A> {
     where
         H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>,
     {
-        let dfa = (&self.negated).intersection(&hypothesis).into_dfa();
-        match dfa.give_word() {
-            Some(w) => {
-                let should_be_accepted = (&self.automaton).into_dfa().accepts(&w);
-                Err((w, should_be_accepted))
-            }
-            None => Ok(()),
-        }
+        todo!()
     }
 }
 
@@ -216,32 +207,11 @@ where
     where
         H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>,
     {
-        match self.automaton.restricted_inequivalence(hypothesis) {
-            Some(w) => {
-                let expected = self
-                    .automaton
-                    .try_mealy_map(&w)
-                    .or(self.default.clone())
-                    .expect("Target must be complete!");
-                if hypothesis.try_mealy_map(&w).as_ref() == Some(&expected) {
-                    panic!(
-                        "Misclassified example {:?}, should be {} but is {:?}",
-                        w,
-                        expected.show(),
-                        hypothesis
-                            .try_mealy_map(&w)
-                            .map(|c| c.show())
-                            .unwrap_or("-".to_string())
-                    );
-                }
-                Err((w, expected))
-            }
-            None => Ok(()),
-        }
+        todo!()
     }
 
-    fn alphabet(&self) -> CharAlphabet {
-        self.automaton.alphabet().clone()
+    fn alphabet(&self) -> &CharAlphabet {
+        self.automaton.alphabet()
     }
 }
 
@@ -269,27 +239,28 @@ pub struct MooreOracle<D> {
     automaton: D,
 }
 
-impl<D: Congruence> Oracle for MooreOracle<D>
+impl<D: Congruence> Oracle for MooreOracle<IntoMooreMachine<D>>
 where
     StateColor<D>: Color + Default,
 {
     type Alphabet = D::Alphabet;
     type Output = StateColor<D>;
 
-    fn alphabet(&self) -> CharAlphabet {
-        self.automaton.alphabet().clone()
+    fn alphabet(&self) -> &Self::Alphabet {
+        self.automaton.alphabet()
     }
 
-    fn output<W: FiniteWord<SymbolOf<D>>>(&self, word: W) -> D::StateColor {
-        self.automaton
-            .try_moore_map(word)
-            .expect("The oracle must be total!")
+    fn output<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(&self, word: W) -> Self::Output {
+        todo!()
     }
 
-    fn equivalence(
+    fn equivalence<H>(
         &self,
-        hypothesis: &MooreMachine<D::Alphabet, D::StateColor>,
-    ) -> Result<(), (Vec<SymbolOf<D>>, D::StateColor)> {
+        hypothesis: H,
+    ) -> Result<(), Counterexample<Self::Alphabet, Self::Output>>
+    where
+        H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>,
+    {
         todo!()
     }
 }
@@ -327,11 +298,12 @@ mod tests {
                 (1, 'b', 1, 0),
                 (1, 'c', 1, 0),
             ])
-            .into_mealy_machine(0);
+            .into_mealy(0);
         let oracle = MealyOracle::new(target, Some(0));
         let alphabet = oracle.alphabet().clone();
-        let mut learner = LStar::for_mealy(alphabet, oracle);
-        let mm = learner.infer();
-        assert_eq!(mm.size(), 2);
+        // let mut learner = LStar::for_mealy(alphabet, oracle);
+        // let mm = learner.infer();
+        // assert_eq!(mm.size(), 2);
+        todo!()
     }
 }

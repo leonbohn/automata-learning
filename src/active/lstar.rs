@@ -41,7 +41,6 @@ type Word<D> = Vec<SymbolOf<D>>;
 pub type Experiments<D> = Vec<Word<D>>;
 
 /// An implementation of the L* algorithm.
-#[derive(Clone)]
 pub struct LStar<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> {
     // the alphabet of what we are learning
     alphabet: D::Alphabet,
@@ -59,7 +58,7 @@ pub struct LStar<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> {
     observations: ObservationTable<SymbolOf<D>, T::Output>,
 }
 
-impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> LStar<D, T> {
+impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> LStar<D, T> {
     pub fn new(alphabet: D::Alphabet, oracle: T) -> Self {
         Self {
             experiments: D::mandatory_experiments(&alphabet).into_iter().collect(),
@@ -208,7 +207,7 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> LStar<D, T> {
     fn hypothesis(&self) -> D {
         let start = std::time::Instant::now();
 
-        let mut ts: DTS<_, _, _> = DTS::new_for_alphabet(self.alphabet.clone());
+        let mut ts: DTS<_, _, _> = DTS::with_capacity(self.alphabet.clone(), 1);
         let mut state_map = Map::default();
         let mut observations = Map::default();
 
@@ -232,7 +231,7 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> LStar<D, T> {
 
                 let added = ts.add_edge(
                     *i,
-                    self.alphabet().expression(a),
+                    self.alphabet.expression(a),
                     *state_map.get(target).unwrap(),
                     color,
                 );
