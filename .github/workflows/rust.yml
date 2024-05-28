@@ -1,0 +1,47 @@
+name: Code integrity and quality
+
+on:
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  check_build:
+    name: "Minimal: build only"
+    strategy:
+      matrix:
+        platform:
+          - os_name: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os_name: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+      - name: Setup Rust toolchain with caching
+        uses: brndnmtthws/rust-action@v1
+      - name: Compile
+        run: cargo build
+
+  checks:
+    name: "Full: tests, clippy, formatting and docs"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+      - name: Setup Rust toolchain with caching
+        uses: brndnmtthws/rust-action@v1
+      - name: Verify correct formatting
+        run: cargo fmt --all --check
+      - name: Ensure that clippy is happy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Verify that documentation contains no invalid links
+        run: cargo doc --no-deps
+      - name: Compile
+        run: cargo build
+      - name: Run all tests and see that there are no regressions
+        run: cargo test --all
