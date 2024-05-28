@@ -1,0 +1,30 @@
+name: Create cache build
+
+on:
+  push:
+    branches:
+      - 'main'
+jobs:
+  check_build:
+    name: "Minimal: build only"
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+      - name: Setup Rust toolchain with caching
+        uses: brndnmtthws/rust-action@v1
+      - name: Compile
+        run: cargo build
+    strategy:
+      matrix:
+        platform:
+          - os_name: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os_name: Linux-x86_64
+            os: ubuntu-latext
+            target: x86_64-unknown-linux-gnu
+          - os_name: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+
