@@ -14,6 +14,7 @@ use automata::prelude::*;
 // /// Deals with active learning algorithms such as L*.
 pub mod active;
 mod priority_mapping;
+pub use priority_mapping::{AnnotatedCongruence, Annotation, PriorityMapping};
 
 pub(crate) mod prefixtree;
 

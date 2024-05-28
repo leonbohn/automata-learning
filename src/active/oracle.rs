@@ -105,7 +105,7 @@ impl<A: Alphabet, X: FiniteWord<A::Symbol>, C: Color> Oracle for SampleOracle<A,
     {
         for (w, c) in &self.sample.words {
             if !hypothesis.output(w).eq(c) {
-                return Err((w.to_vec(), c.clone()));
+                return Err((w.into_vec(), c.clone()));
             }
         }
         Ok(())
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn mealy_al() {
-        let target = NTS::builder()
+        let target = DTS::builder()
             .with_transitions([
                 (0, 'a', 1, 1),
                 (0, 'b', 1, 0),

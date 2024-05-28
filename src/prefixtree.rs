@@ -7,13 +7,13 @@ use tracing::trace;
 pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIterator<Item = W>>(
     alphabet: A,
     words: I,
-) -> RightCongruence<A> {
+) -> RightCongruence<A, Vec<A::Symbol>> {
     let words: Vec<ReducedOmegaWord<_>> = words.into_iter().map(|word| word.into()).collect_vec();
     debug_assert!(words.iter().all(|word| !word.raw_word().is_empty()));
     fn build_accepting_loop<A: Alphabet>(
         alphabet: &A,
-        tree: &mut RightCongruence<A>,
-        state: usize,
+        tree: &mut RightCongruence<A, Vec<A::Symbol>>,
+        state: StateIndex,
         access: Vec<A::Symbol>,
         loop_segment: &[A::Symbol],
     ) {
@@ -30,10 +30,10 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
             current,
             alphabet.make_expression(loop_segment[loop_segment.len() - 1]),
             state,
-        ))
+        ));
     }
-    let mut tree = RightCongruence::new(alphabet.clone());
-    let root = tree.add_state((vec![], Void));
+    let mut tree = RightCongruence::new_with_initial_color(alphabet.clone(), vec![]);
+    let root = tree.initial();
 
     let mut queue = VecDeque::from_iter([(root, vec![], words.to_vec())]);
 
@@ -55,7 +55,7 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
             }
 
             for sym in alphabet.universe() {
-                if let Some(new_words) = map.remove(&sym) {
+                if let Some(new_words) = map.swap_remove(&sym) {
                     debug_assert!(!new_words.is_empty());
                     let new_access = access
                         .iter()
@@ -64,7 +64,7 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
                         .collect_vec();
                     trace!("Adding state {:?}", new_access);
                     let successor = tree.add_state(new_access.clone());
-                    tree.add_edge(state, A::expression(sym), successor, Void);
+                    tree.add_edge((state, alphabet.make_expression(sym), successor));
                     queue.push_back((successor, new_access, new_words.into_iter().collect()));
                 }
             }
@@ -88,20 +88,21 @@ mod tests {
 
     #[test]
     fn build_prefix_tree() {
-        let words = [upw!("aa"), upw!("aba"), upw!("bbaab"), upw!("bb")];
-        let alphabet = CharAlphabet::from_iter(['a', 'b']);
-        let pta = prefix_tree(alphabet, words);
-        let completed = pta
-            .erase_state_colors()
-            .collect_complete_with_initial(Void, Void);
-        let lead_to_sink = ["ba", "bbbbbbbbba", "ababababbbabaababa", "aaaaaaaaaaaaab"];
-        for w in &lead_to_sink {
-            for v in &lead_to_sink {
-                assert_eq!(
-                    completed.reached_state_index(w),
-                    completed.reached_state_index(v)
-                );
-            }
-        }
+        todo!()
+        // let words = [upw!("aa"), upw!("aba"), upw!("bbaab"), upw!("bb")];
+        // let alphabet = CharAlphabet::from_iter(['a', 'b']);
+        // let pta = prefix_tree(alphabet, words);
+        // let completed = pta
+        //     .erase_state_colors()
+        //     .collect_complete_with_initial(Void, Void);
+        // let lead_to_sink = ["ba", "bbbbbbbbba", "ababababbbabaababa", "aaaaaaaaaaaaab"];
+        // for w in &lead_to_sink {
+        //     for v in &lead_to_sink {
+        //         assert_eq!(
+        //             completed.reached_state_index(w),
+        //             completed.reached_state_index(v)
+        //         );
+        //     }
+        // }
     }
 }

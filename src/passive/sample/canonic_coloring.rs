@@ -5,7 +5,7 @@ use crate::priority_mapping::ClassifiesIdempotents;
 use super::PeriodicOmegaSample;
 
 impl<A: Alphabet> ClassifiesIdempotents<A> for PeriodicOmegaSample<A> {
-    fn classify(&self, class: &automata::Class<<A as Alphabet>::Symbol>) -> Option<bool> {
+    fn classify(&self, class: impl FiniteWord<<A as Alphabet>::Symbol>) -> Option<bool> {
         self.classify(class.omega_power())
     }
 }

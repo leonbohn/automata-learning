@@ -1,6 +1,6 @@
 use automata::prelude::*;
 
-use super::LStarHypothesis;
+use super::{Experiment, LStarHypothesis};
 
 impl<A: Alphabet, C: Color + Default> LStarHypothesis for MooreMachine<A, C> {
     type Color = C;
@@ -12,9 +12,9 @@ impl<A: Alphabet, C: Color + Default> LStarHypothesis for MooreMachine<A, C> {
 
     fn from_transition_system(
         ts: DTS<Self::Alphabet, Self::StateColor, Self::EdgeColor>,
-        initial: usize,
+        initial: StateIndex,
     ) -> Self {
-        ts.with_initial(initial).into_moore()
+        MooreMachine::from_parts(ts, initial)
     }
 
     fn give_state_color(
@@ -42,12 +42,12 @@ impl<A: Alphabet, C: Color + Default> LStarHypothesis for MooreMachine<A, C> {
 
     fn mandatory_experiments(
         alphabet: &Self::Alphabet,
-    ) -> impl IntoIterator<Item = Vec<SymbolOf<Self>>> {
-        [vec![]]
+    ) -> impl IntoIterator<Item = Experiment<SymbolOf<Self>>> {
+        [Experiment(vec![])]
     }
 }
 
-impl<C: Color + Default> LStarHypothesis for MealyMachine<CharAlphabet, C> {
+impl<C: Color + Default> LStarHypothesis for MealyMachine<CharAlphabet, Void, C> {
     type Color = C;
 
     fn transform(&self, word: &[SymbolOf<Self>]) -> Self::Color {
@@ -61,9 +61,9 @@ impl<C: Color + Default> LStarHypothesis for MealyMachine<CharAlphabet, C> {
 
     fn from_transition_system(
         ts: DTS<Self::Alphabet, Self::StateColor, Self::EdgeColor>,
-        initial: usize,
+        initial: StateIndex,
     ) -> Self {
-        ts.with_initial(initial).into_mealy()
+        MealyMachine::from_parts(ts, initial)
     }
 
     fn give_state_color(
@@ -80,7 +80,7 @@ impl<C: Color + Default> LStarHypothesis for MealyMachine<CharAlphabet, C> {
         experiments: &super::Experiments<Self>,
         row: &[Self::Color],
     ) -> Self::EdgeColor {
-        let Some(idx) = experiments.iter().position(|x| x == &[a]) else {
+        let Some(idx) = experiments.iter().position(|x| x == &Experiment(vec![a])) else {
             panic!("experiment for single letters must exist");
         };
         assert!(idx < row.len(), "not enough experiments");
@@ -89,8 +89,8 @@ impl<C: Color + Default> LStarHypothesis for MealyMachine<CharAlphabet, C> {
 
     fn mandatory_experiments(
         alphabet: &Self::Alphabet,
-    ) -> impl IntoIterator<Item = Vec<SymbolOf<Self>>> {
-        alphabet.universe().map(|a| vec![a])
+    ) -> impl IntoIterator<Item = Experiment<SymbolOf<Self>>> {
+        alphabet.universe().map(|a| Experiment(vec![a]))
     }
 }
 
@@ -104,15 +104,15 @@ impl LStarHypothesis for DFA {
 
     fn mandatory_experiments(
         alphabet: &Self::Alphabet,
-    ) -> impl IntoIterator<Item = Vec<SymbolOf<Self>>> {
-        [vec![]]
+    ) -> impl IntoIterator<Item = Experiment<SymbolOf<Self>>> {
+        [Experiment(vec![])]
     }
 
     fn from_transition_system(
         ts: DTS<Self::Alphabet, Self::StateColor, Self::EdgeColor>,
-        initial: usize,
+        initial: StateIndex,
     ) -> Self {
-        ts.with_initial(initial).into_dfa()
+        DFA::from_parts(ts, initial)
     }
 
     fn give_state_color(
@@ -121,7 +121,10 @@ impl LStarHypothesis for DFA {
         row: &[Self::Color],
     ) -> Self::StateColor {
         let empty: Vec<SymbolOf<Self>> = vec![];
-        let Some(idx) = experiments.iter().position(|x| empty.eq(x)) else {
+        let Some(idx) = experiments
+            .iter()
+            .position(|x| x.eq(&Experiment(empty.clone())))
+        else {
             panic!("empty experiment  must exist");
         };
         assert!(idx < row.len(), "not enough experiments");

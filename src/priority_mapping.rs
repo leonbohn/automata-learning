@@ -11,17 +11,17 @@ use automata::{
 
 /// A priority mapping is essentially a [`crate::MealyMachine`], i.e. it reads
 /// finite words and ouptuts a priority (which in this case is a `usize`).
-pub type PriorityMapping<A = CharAlphabet> = MealyMachine<A, usize>;
+pub type PriorityMapping<A = CharAlphabet> = MealyMachine<A, Int>;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct CongruentPriorityMapping<'ts, A: Alphabet> {
     ts: &'ts RightCongruence<A>,
-    class: usize,
+    class: StateIndex,
     mm: MealyMachine<A>,
 }
 
 impl<'ts, A: Alphabet> CongruentPriorityMapping<'ts, A> {
-    pub fn new(ts: &'ts RightCongruence<A>, class: usize, mm: MealyMachine<A>) -> Self {
+    pub fn new(ts: &'ts RightCongruence<A>, class: StateIndex, mm: MealyMachine<A>) -> Self {
         Self { ts, class, mm }
     }
 
@@ -29,7 +29,7 @@ impl<'ts, A: Alphabet> CongruentPriorityMapping<'ts, A> {
         self.ts
     }
 
-    pub fn class(&self) -> usize {
+    pub fn class(&self) -> StateIndex {
         self.class
     }
 
@@ -100,12 +100,12 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
 
 #[autoimpl(for<T: trait + ?Sized> &T)]
 pub trait ClassifiesIdempotents<A: Alphabet> {
-    fn classify(&self, class: &Class<A::Symbol>) -> Option<bool>;
+    fn classify(&self, class: impl FiniteWord<A::Symbol>) -> Option<bool>;
 }
 
 impl<A: Alphabet> Debug for AnnotatedCongruence<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        todo!()
     }
 }
 
@@ -113,7 +113,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
     /// Computes the canonic coloring on a given annotated congruence. This makes use
     /// of the dag of strongly connected components of the congruence. For more information
     /// on how the computation is done exactly, see [Section 5, Step 2](https://arxiv.org/pdf/2302.11043.pdf).
-    pub fn canonic_coloring(&self) -> MooreMachine<A, usize> {
+    pub fn canonic_coloring(&self) -> MooreMachine<A, Int> {
         // we first need to decompose into sccs and mark them with the color of the
         // idempotent that it contains.
         let tjdag = self.0.tarjan_dag();
@@ -159,7 +159,12 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             .map(|i| {
                 let scc = tjdag.get(i).expect("Must be in an SCC");
                 let info = dag.color(scc).expect("Must have worked on that SCC");
-                (i, info.expect("Every SCC must have a color"))
+                (
+                    i,
+                    info.expect("Every SCC must have a color")
+                        .try_into()
+                        .unwrap(),
+                )
             })
             .collect();
 
@@ -184,8 +189,8 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
         let annotations: automata::math::Map<_, _> = rc
             .state_indices()
             .map(|i| {
-                let cls = rc.class_name(i).unwrap();
-                let out = if !cls.is_empty() && rc.is_idempotent(cls) {
+                let cls = rc.state_to_mr(i).unwrap();
+                let out = if !cls.is_empty() && rc.is_idempotent(i) {
                     let b = f.classify(cls);
                     Annotation::new(true, b)
                 } else {
@@ -198,7 +203,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
         Self::new(
             rc.with_state_color(annotations)
                 .erase_edge_colors()
-                .right_congruence(),
+                .collect_right_congruence(),
         )
     }
 }
@@ -208,7 +213,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
 /// Each mealy machine M_c is called a component of the FWPM and the mapping
 /// it computes (on non-empty words) is weak in the sense that M_c(xy) <= M_c(x)
 /// for all x and y.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Fwpm<A: Alphabet = CharAlphabet> {
     cong: RightCongruence<A>,
     pms: Vec<PriorityMapping<A>>,

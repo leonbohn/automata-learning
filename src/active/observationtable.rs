@@ -1,8 +1,24 @@
 use automata::prelude::*;
 use std::hash::Hash;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Experiment<S>(pub(super) Vec<S>);
+
+impl<S: Symbol> FiniteWord<S> for Experiment<S> {
+    type Symbols<'this> = std::iter::Cloned<std::slice::Iter<'this, S>>
+    where
+        Self: 'this;
+
+    fn symbols(&self) -> Self::Symbols<'_> {
+        self.0.iter().cloned()
+    }
+}
+
+impl<S: Symbol> LinearWord<S> for Experiment<S> {
+    fn nth(&self, position: usize) -> Option<S> {
+        self.0.get(position).cloned()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Representative<S>(pub(super) Vec<S>);

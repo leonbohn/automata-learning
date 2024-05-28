@@ -1,8 +1,5 @@
 use automata::prelude::*;
-use automata_learning::{
-    active::{LStar, SampleOracle},
-    passive::FiniteSample,
-};
+use automata_learning::{active::SampleOracle, passive::FiniteSample};
 
 fn build_sample_oracle_last_sym() -> SampleOracle<CharAlphabet, Vec<char>, usize> {
     let alphabet = alphabet!(simple 'a', 'b');
@@ -16,11 +13,12 @@ fn build_sample_oracle_last_sym() -> SampleOracle<CharAlphabet, Vec<char>, usize
 }
 
 fn lstar_last_sym(
-    sample: SampleOracle<CharAlphabet, Vec<char>, usize>,
+    _sample: SampleOracle<CharAlphabet, Vec<char>, usize>,
 ) -> MooreMachine<CharAlphabet, usize> {
-    let alphabet = sample.alphabet().clone();
-    let mut lstar = LStar::for_moore(alphabet, sample);
-    lstar.infer()
+    todo!()
+    // let alphabet = sample.alphabet().clone();
+    // let mut lstar = LStar::for_moore(alphabet, sample);
+    // lstar.infer()
 }
 
 fn iai_lstar_last_sym() {
@@ -29,11 +27,12 @@ fn iai_lstar_last_sym() {
 }
 
 fn lstar_last_sym_mealy(
-    sample: SampleOracle<CharAlphabet, Vec<char>, usize>,
+    _sample: SampleOracle<CharAlphabet, Vec<char>, usize>,
 ) -> MealyMachine<CharAlphabet, usize> {
-    let alphabet = sample.alphabet().clone();
-    let mut lstar = LStar::for_mealy(alphabet, sample);
-    lstar.infer()
+    todo!()
+    // let alphabet = sample.alphabet().clone();
+    // let mut lstar = LStar::for_mealy(alphabet, sample);
+    // lstar.infer()
 }
 
 fn iai_lstar_last_sym_mealy() {

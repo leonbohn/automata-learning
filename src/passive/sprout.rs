@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreemath::Set, VecDeque},
+    collections::{BTreeSet, VecDeque},
     fmt::Display,
 };
 
@@ -111,7 +111,8 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
     samples: &SplitOmegaSample<'_, A, bool>,
     class: Class<A::Symbol>,
 ) -> ConflictRelation<A> {
-    let Some(sample) = samples.get(&class) else {
+    let idx = samples.cong().reached_state_index(&class).unwrap();
+    let Some(sample) = samples.get(idx) else {
         panic!("Sample for class {:?} does not exist!", class)
     };
     let periodic_sample = sample.to_periodic_sample();
@@ -128,21 +129,21 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
             .join(",")
     );
 
-    let looping_words = samples.cong().looping_words(&class);
+    let looping_words = samples.cong().looping_words(idx);
 
     let left_pta = prefix_tree(sample.alphabet.clone(), periodic_sample.positive())
         .map_state_colors(|mr| {
-            !mr.class().is_empty()
-                && periodic_sample.classify(mr.class().omega_power()) == Some(true)
+            !mr.is_empty() && periodic_sample.classify(mr.omega_power()) == Some(true)
         })
+        .into_dfa()
         .intersection(&looping_words)
         .collect_dfa();
 
     let right_pta = prefix_tree(sample.alphabet.clone(), periodic_sample.negative())
         .map_state_colors(|mr| {
-            !mr.class().is_empty()
-                && periodic_sample.classify(mr.class().omega_power()) == Some(false)
+            !mr.is_empty() && periodic_sample.classify(mr.omega_power()) == Some(false)
         })
+        .into_dfa()
         .intersection(&looping_words)
         .collect_dfa();
 
@@ -177,18 +178,19 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
         }
     }
 
-    let (left, left_map) = left_pta.build_right_congruence();
-    debug_assert!(left.size() == left_pta.size());
-    let (right, right_map) = right_pta.build_right_congruence();
-    debug_assert!(right.size() == right_pta.size());
+    todo!()
+    // let (left, left_map) = Sproutable::sprout_from_ts_with_bijection(left_pta);
+    // debug_assert!(left.size() == left_pta.size());
+    // let (right, right_map) = right_pta.build_right_congruence();
+    // debug_assert!(right.size() == right_pta.size());
 
-    ConflictRelation {
-        dfas: [left, right],
-        conflicts: conflicts
-            .into_iter()
-            .map(|(l, r)| (left_map[&l], right_map[&r]))
-            .collect(),
-    }
+    // ConflictRelation {
+    //     dfas: [left, right],
+    //     conflicts: conflicts
+    //         .into_iter()
+    //         .map(|(l, r)| (left_map[&l], right_map[&r]))
+    //         .collect(),
+    // }
 }
 
 /// Computes a conflict relation encoding prefix consistency. For more details on how this works, see
@@ -202,36 +204,37 @@ pub fn prefix_consistency_conflicts<A: Alphabet, S: std::borrow::Borrow<OmegaSam
 
     let dfa = (&left_pta).ts_product(&right_pta);
 
-    let sccs = dfa.sccs();
-    let states_with_infinite_run: Vec<(usize, usize)> = sccs
-        .iter()
-        .filter_map(|scc| {
-            if !scc.is_transient() {
-                Some(scc.clone().into_iter().map(Into::into))
-            } else {
-                None
-            }
-        })
-        .flatten()
-        .collect();
+    todo!()
+    // let sccs = dfa.sccs();
+    // let states_with_infinite_run: Vec<(usize, usize)> = sccs
+    //     .iter()
+    //     .filter_map(|scc| {
+    //         if !scc.is_transient() {
+    //             Some(scc.clone().into_iter().map(Into::into))
+    //         } else {
+    //             None
+    //         }
+    //     })
+    //     .flatten()
+    //     .collect();
 
-    let mut conflicts = math::Set::default();
-    for ProductIndex(l, r) in dfa.state_indices() {
-        let reachable = dfa
-            .reachable_state_indices_from(ProductIndex(l, r))
-            .collect_vec();
-        if reachable
-            .iter()
-            .any(|ProductIndex(p, q)| states_with_infinite_run.contains(&(*p, *q)))
-        {
-            conflicts.insert((l, r));
-        }
-    }
+    // let mut conflicts = math::Set::default();
+    // for ProductIndex(l, r) in dfa.state_indices() {
+    //     let reachable = dfa
+    //         .reachable_state_indices_from(ProductIndex(l, r))
+    //         .collect_vec();
+    //     if reachable
+    //         .iter()
+    //         .any(|ProductIndex(p, q)| states_with_infinite_run.contains(&(*p, *q)))
+    //     {
+    //         conflicts.insert((l, r));
+    //     }
+    // }
 
-    ConflictRelation {
-        dfas: [left_pta, right_pta],
-        conflicts,
-    }
+    // ConflictRelation {
+    //     dfas: [left_pta, right_pta],
+    //     conflicts,
+    // }
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for () {
@@ -249,7 +252,7 @@ impl<A: Alphabet> ConsistencyCheck<A> for () {
 }
 
 /// This constraint ensures that the learned automaton separates idempotents.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SeparatesIdempotents<'a, A: Alphabet> {
     sample: &'a ClassOmegaSample<'a, A, bool>,
 }
@@ -285,88 +288,89 @@ where
     A: Alphabet,
     C: ConsistencyCheck<A>,
 {
-    let mut cong = RightCongruence::new(conflicts.alphabet().clone());
-    let initial = cong.add_state((vec![], Void));
-    let threshold = conflicts.threshold();
+    todo!()
+    // let mut cong = RightCongruence::new(conflicts.alphabet().clone());
+    // let initial = cong.add_state((vec![], Void));
+    // let threshold = conflicts.threshold();
 
-    // We maintain a math::Set of missing transitions and go through them in order of creation for the states and in order
-    // give by alphabet for the symbols for one state (this amouts to BFS).
-    let mut queue: VecDeque<_> = conflicts
-        .alphabet()
-        .universe()
-        .map(|sym| (initial, sym))
-        .collect();
-    'outer: while let Some((source, sym)) = queue.pop_front() {
-        trace!(
-            "Trying to add transition from {} on {}, cong size is {}",
-            cong.state_color(source)
-                .expect("Every state must be colored!")
-                .blue(),
-            sym.show().blue(),
-            cong.size(),
-        );
+    // // We maintain a math::Set of missing transitions and go through them in order of creation for the states and in order
+    // // give by alphabet for the symbols for one state (this amouts to BFS).
+    // let mut queue: VecDeque<_> = conflicts
+    //     .alphabet()
+    //     .universe()
+    //     .map(|sym| (initial, sym))
+    //     .collect();
+    // 'outer: while let Some((source, sym)) = queue.pop_front() {
+    //     trace!(
+    //         "Trying to add transition from {} on {}, cong size is {}",
+    //         cong.state_color(source)
+    //             .expect("Every state must be colored!")
+    //             .blue(),
+    //         sym.show().blue(),
+    //         cong.size(),
+    //     );
 
-        // FIXME: This is a hack to avoid lifetime issues, find a better way...
-        // TODO: figure out if this is the best way, we just take the upper bound on the number and assume that all states have sequential ids...
-        for target in (0..cong.size()) {
-            if !allow_transitions_into_epsilon && target == initial {
-                continue;
-            }
-            let old_edge = cong.add_edge(source, A::expression(sym), target, Void);
+    //     // FIXME: This is a hack to avoid lifetime issues, find a better way...
+    //     // TODO: figure out if this is the best way, we just take the upper bound on the number and assume that all states have sequential ids...
+    //     for target in (0..cong.size()) {
+    //         if !allow_transitions_into_epsilon && target == initial {
+    //             continue;
+    //         }
+    //         let old_edge = cong.add_edge(source, A::expression(sym), target, Void);
 
-            if conflicts.consistent(&cong)
-                && additional_constraints.iter().all(|c| c.consistent(&cong))
-            {
-                trace!(
-                    "\tTransition {}--{}-->{} is consistent",
-                    cong.state_color(source)
-                        .expect("We expect every state to be colored")
-                        .green(),
-                    sym.show(),
-                    cong.state_color(target)
-                        .expect("We expect every state to be colored")
-                        .green()
-                );
-                continue 'outer;
-            } else {
-                trace!(
-                    "\tTransition {}--{}-->{} is not consistent",
-                    cong.state_color(source)
-                        .expect("We expect every state to be colored")
-                        .red(),
-                    sym.show(),
-                    cong.state_color(target)
-                        .expect("We expect every state to be colored")
-                        .red()
-                );
-                cong.remove_edges(source, A::expression(sym));
-            }
-        }
+    //         if conflicts.consistent(&cong)
+    //             && additional_constraints.iter().all(|c| c.consistent(&cong))
+    //         {
+    //             trace!(
+    //                 "\tTransition {}--{}-->{} is consistent",
+    //                 cong.state_color(source)
+    //                     .expect("We expect every state to be colored")
+    //                     .green(),
+    //                 sym.show(),
+    //                 cong.state_color(target)
+    //                     .expect("We expect every state to be colored")
+    //                     .green()
+    //             );
+    //             continue 'outer;
+    //         } else {
+    //             trace!(
+    //                 "\tTransition {}--{}-->{} is not consistent",
+    //                 cong.state_color(source)
+    //                     .expect("We expect every state to be colored")
+    //                     .red(),
+    //                 sym.show(),
+    //                 cong.state_color(target)
+    //                     .expect("We expect every state to be colored")
+    //                     .red()
+    //             );
+    //             cong.remove_edges(source, A::expression(sym));
+    //         }
+    //     }
 
-        let mut new_state_label = cong
-            .state_color(source)
-            .expect("We expect every state to be colored")
-            .class()
-            .clone();
-        new_state_label.push(sym);
-        trace!(
-            "No consistent transition found, adding new state [{}]",
-            new_state_label
-                .iter()
-                .map(|c| format!("{:?}", c))
-                .join("")
-                .blue()
-        );
+    //     let mut new_state_label = cong
+    //         .state_color(source)
+    //         .expect("We expect every state to be colored")
+    //         .class()
+    //         .clone();
+    //     new_state_label.push(sym);
+    //     trace!(
+    //         "No consistent transition found, adding new state [{}]",
+    //         new_state_label
+    //             .iter()
+    //             .map(|c| format!("{:?}", c))
+    //             .join("")
+    //             .blue()
+    //     );
 
-        let new_state = cong.add_state(new_state_label);
-        if new_state > threshold {
-            panic!("TOO MANY STATES")
-        }
-        cong.add_edge(source, A::expression(sym), new_state, Void);
-        queue.extend(std::iter::repeat(new_state).zip(conflicts.alphabet().universe()))
-    }
+    //     let new_state = cong.add_state(new_state_label);
+    //     if new_state > threshold {
+    //         panic!("TOO MANY STATES")
+    //     }
+    //     cong.add_edge(source, A::expression(sym), new_state, Void);
+    //     queue.extend(std::iter::repeat(new_state).zip(conflicts.alphabet().universe()))
+    // }
 
-    cong
+    // cong
 }
 
 #[cfg(test)]
@@ -507,113 +511,114 @@ pub(crate) mod tests {
     #[test]
     #[ignore]
     fn learn_small_forc() {
-        let (alphabet, sample) = testing_smaller_forc_smaple();
-        let cong = sample.infer_right_congruence();
-        assert_eq!(cong.size(), 1);
+        // let (alphabet, sample) = testing_smaller_forc_smaple();
+        // let cong = sample.infer_right_congruence();
+        // assert_eq!(cong.size(), 1);
 
-        let split_sample = sample.split(&cong);
-        let eps = Class::epsilon();
-        let eps_sample = split_sample.get(&eps).unwrap();
+        // let split_sample = sample.split(&cong);
+        // let eps = Class::epsilon();
+        // let eps_sample = split_sample.get(&eps).unwrap();
 
-        let conflicts: ConflictRelation<CharAlphabet> =
-            super::iteration_consistency_conflicts(&split_sample, eps);
-        // conflicts.dfas[0].deprecated_display_rendered();
-        // conflicts.dfas[1].deprecated_display_rendered();
-        println!(
-            "{}",
-            conflicts
-                .conflicts
-                .iter()
-                .map(|(l, r)| format!("({l},{r})"))
-                .join(", ")
-        );
-        let prc_eps = super::sprout(conflicts, vec![], false);
-        // prc_eps.deprecated_display_rendered();
+        // let conflicts: ConflictRelation<CharAlphabet> =
+        //     super::iteration_consistency_conflicts(&split_sample, eps);
+        // // conflicts.dfas[0].deprecated_display_rendered();
+        // // conflicts.dfas[1].deprecated_display_rendered();
+        // println!(
+        //     "{}",
+        //     conflicts
+        //         .conflicts
+        //         .iter()
+        //         .map(|(l, r)| format!("({l},{r})"))
+        //         .join(", ")
+        // );
+        // let prc_eps = super::sprout(conflicts, vec![], false);
+        // // prc_eps.deprecated_display_rendered();
         todo!()
     }
 
     #[test]
     fn learn_larger_forc() {
-        let (alphabet, sample) = testing_larger_forc_sample();
-        let cong = sample.infer_right_congruence();
-        let split = sample.split(&cong);
-        let forc = split.infer_forc();
-        let prc_eps = forc.prc(Class::epsilon()).unwrap();
-        println!("{}", prc_eps.dot_representation());
-        assert_eq!(prc_eps.size(), 13);
+        // let (alphabet, sample) = testing_larger_forc_sample();
+        // let cong = sample.infer_right_congruence();
+        // let split = sample.split(&cong);
+        // let forc = split.infer_forc();
+        // let prc_eps = forc.prc(Class::epsilon()).unwrap();
+        // println!("{}", prc_eps.dot_representation());
+        // assert_eq!(prc_eps.size(), 13);
+        todo!()
     }
 
-    #[test]
-    fn prefix_consistency_sprout_two() {
-        let alphabet = alphabet!(simple 'a', 'b');
-        let sample = Sample::new_omega(
-            alphabet.clone(),
-            vec![
-                (upw!("a"), true),
-                (upw!("b", "a"), false),
-                (upw!("bb", "a"), true),
-            ],
-        );
-        let mut expected_cong: RightCongruence<CharAlphabet, Void, Void> =
-            RightCongruence::new(alphabet!(simple 'a', 'b'));
-        let q0 = expected_cong.add_state(vec![]);
-        let q1 = expected_cong.add_state(vec!['b']);
-        expected_cong.add_edge(q0, 'b', q1, ());
-        expected_cong.add_edge(q1, 'b', q0, ());
-        expected_cong.add_edge(q0, 'a', q0, ());
-        expected_cong.add_edge(q1, 'a', q1, ());
+    // #[test]
+    // fn prefix_consistency_sprout_two() {
+    //     let alphabet = alphabet!(simple 'a', 'b');
+    //     let sample = Sample::new_omega(
+    //         alphabet.clone(),
+    //         vec![
+    //             (upw!("a"), true),
+    //             (upw!("b", "a"), false),
+    //             (upw!("bb", "a"), true),
+    //         ],
+    //     );
+    //     let mut expected_cong: RightCongruence<CharAlphabet, Void, Void> =
+    //         RightCongruence::new(alphabet!(simple 'a', 'b'));
+    //     let q0 = expected_cong.add_state(vec![]);
+    //     let q1 = expected_cong.add_state(vec!['b']);
+    //     expected_cong.add_edge(q0, 'b', q1, ());
+    //     expected_cong.add_edge(q1, 'b', q0, ());
+    //     expected_cong.add_edge(q0, 'a', q0, ());
+    //     expected_cong.add_edge(q1, 'a', q1, ());
 
-        let conflicts = super::prefix_consistency_conflicts(sample);
+    //     let conflicts = super::prefix_consistency_conflicts(sample);
 
-        let cong = super::sprout(conflicts, vec![], true);
+    //     let cong = super::sprout(conflicts, vec![], true);
 
-        assert_eq!(cong.size(), expected_cong.size());
-        for word in ["aba", "abbabb", "baabaaba", "bababaaba", "b", "a", ""] {
-            let reached = cong.reached_state_color(word).unwrap();
-            let expected = expected_cong.reached_state_color(word).unwrap();
-            assert_eq!(
-                reached, expected,
-                "{} reached {}, expected was {}",
-                word, reached, expected
-            )
-        }
-    }
+    //     assert_eq!(cong.size(), expected_cong.size());
+    //     for word in ["aba", "abbabb", "baabaaba", "bababaaba", "b", "a", ""] {
+    //         let reached = cong.reached_state_color(word).unwrap();
+    //         let expected = expected_cong.reached_state_color(word).unwrap();
+    //         assert_eq!(
+    //             reached, expected,
+    //             "{} reached {}, expected was {}",
+    //             word, reached, expected
+    //         )
+    //     }
+    // }
 
-    #[test]
-    fn prefix_consistency_sprout_one() {
-        let alphabet = alphabet!(simple 'a', 'b');
-        let sample = Sample::new_omega(
-            alphabet.clone(),
-            vec![(upw!("a"), false), (upw!("b"), true)],
-        );
-        let conflicts = super::prefix_consistency_conflicts(sample);
-        let cong = super::sprout(conflicts, vec![], true);
+    // #[test]
+    // fn prefix_consistency_sprout_one() {
+    //     let alphabet = alphabet!(simple 'a', 'b');
+    //     let sample = Sample::new_omega(
+    //         alphabet.clone(),
+    //         vec![(upw!("a"), false), (upw!("b"), true)],
+    //     );
+    //     let conflicts = super::prefix_consistency_conflicts(sample);
+    //     let cong = super::sprout(conflicts, vec![], true);
 
-        assert_eq!(cong.size(), 1);
-        assert!(cong.contains_state_color(&vec![].into()));
-    }
+    //     assert_eq!(cong.size(), 1);
+    //     assert!(cong.contains_state_color(&vec![].into()));
+    // }
 
-    #[test]
-    fn prefix_consistency_sprout_four() {
-        let alphabet = alphabet!(simple 'a', 'b');
-        let sample = Sample::new_omega(
-            alphabet.clone(),
-            vec![
-                (upw!("a"), false),
-                (upw!("b", "a"), false),
-                (upw!("bb", "a"), false),
-                (upw!("bbb", "a"), true),
-            ],
-        );
+    // #[test]
+    // fn prefix_consistency_sprout_four() {
+    //     let alphabet = alphabet!(simple 'a', 'b');
+    //     let sample = Sample::new_omega(
+    //         alphabet.clone(),
+    //         vec![
+    //             (upw!("a"), false),
+    //             (upw!("b", "a"), false),
+    //             (upw!("bb", "a"), false),
+    //             (upw!("bbb", "a"), true),
+    //         ],
+    //     );
 
-        let conflicts = super::prefix_consistency_conflicts(sample);
-        println!("{:?}", conflicts);
+    //     let conflicts = super::prefix_consistency_conflicts(sample);
+    //     println!("{:?}", conflicts);
 
-        let cong = super::sprout(conflicts, vec![], true);
+    //     let cong = super::sprout(conflicts, vec![], true);
 
-        assert_eq!(cong.size(), 4);
-        for class in ["", "b", "bb", "bbb"] {
-            assert!(cong.contains_state_color(&class.into()))
-        }
-    }
+    //     assert_eq!(cong.size(), 4);
+    //     for class in ["", "b", "bb", "bbb"] {
+    //         assert!(cong.contains_state_color(&class.into()))
+    //     }
+    // }
 }

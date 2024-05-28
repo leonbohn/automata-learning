@@ -43,6 +43,8 @@ pub type OmegaSample<A = CharAlphabet, C = bool> =
 impl<A: Alphabet> OmegaSample<A> {
     pub fn prefix_tree(&self) -> RightCongruence<A> {
         prefix_tree(self.alphabet().clone(), self.words())
+            .erase_state_colors()
+            .collect_right_congruence()
     }
 }
 

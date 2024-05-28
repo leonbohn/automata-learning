@@ -104,10 +104,10 @@ pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet, bool>) -> DPA {
         .ts_product(precise)
         .map_edge_colors(|(_, c)| c)
         .erase_state_colors();
-    let completed = prod.trim_collect();
+    let (completed, initial) = prod.trim_collect();
 
     //now we use the completed thing to learn a MealyMachine from which we can then build the DPA
-    let mm = completed.into_mealy();
+    let mm = completed.with_initial(initial).collect_mealy();
     let alphabet = mm.alphabet().clone();
     let oracle = MealyOracle::new(mm, Some(0));
 
