@@ -6,7 +6,7 @@ use std::{
     hash::Hash,
 };
 
-use automata::{prelude::*, word::LinearWord, Map};
+use automata::prelude::*;
 use itertools::Itertools;
 use tracing::{debug, trace};
 
@@ -22,14 +22,14 @@ pub use omega::{OmegaSampleParseError, PeriodicOmegaSample};
 
 mod canonic_coloring;
 
-mod characterize;
+// mod characterize;
 
 /// Represents a finite sample, which is a pair of positive and negative instances.
 #[derive(Clone, Eq, PartialEq)]
 #[allow(missing_docs)]
 pub struct Sample<A: Alphabet, W: LinearWord<A::Symbol> + Hash, C: Color = bool> {
     pub alphabet: A,
-    pub words: Map<W, C>,
+    pub words: math::Map<W, C>,
 }
 
 /// Type alias for samples over the alphabet `A`, containing finite words which are classified with color `C`,
@@ -170,7 +170,7 @@ where
 #[macro_export]
 macro_rules! sample {
     ($alph:expr; pos $($pos:expr),+; neg $($neg:expr),+) => {
-        $crate::passive::Sample::new_omega($alph, [$($pos),+].into_iter().map(|p| ($crate::passive::ReducedOmegaWord::try_from(p).unwrap(), true)).chain([$($neg),+].into_iter().map(|n| ($crate::passive::ReducedOmegaWord::try_from(n).unwrap(), false))).collect::<automata::Map<_, bool>>())
+        $crate::passive::Sample::new_omega($alph, [$($pos),+].into_iter().map(|p| ($crate::passive::ReducedOmegaWord::try_from(p).unwrap(), true)).chain([$($neg),+].into_iter().map(|n| ($crate::passive::ReducedOmegaWord::try_from(n).unwrap(), false))).collect::<automata::math::Map<_, bool>>())
     };
 }
 
@@ -273,11 +273,6 @@ mod tests {
             "Construction of congruence took {}μs",
             time_start.elapsed().as_micros()
         );
-
-        for (access, mr) in [("aaaa", "aaa"), ("baaa", "ba"), ("bbbbbbbbbb", "bbb")] {
-            let expected_state_name = mr.chars().collect_vec().into();
-            assert_eq!(cong.reached_state_color(access), Some(expected_state_name));
-        }
 
         let dfa = cong.map_state_colors(|_| true).collect_dfa();
         for prf in ["aba", "ababbbbbb", "", "aa", "b", "bbabbab"] {

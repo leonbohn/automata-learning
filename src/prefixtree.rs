@@ -1,13 +1,8 @@
 use std::collections::VecDeque;
 
-use automata::{
-    transition_system::Sproutable, word::OmegaWord, Alphabet, Map, Pointed, RightCongruence, Set,
-    Void,
-};
+use automata::prelude::*;
 use itertools::Itertools;
 use tracing::trace;
-
-use automata::word::ReducedOmegaWord;
 
 pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIterator<Item = W>>(
     alphabet: A,
@@ -16,6 +11,7 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
     let words: Vec<ReducedOmegaWord<_>> = words.into_iter().map(|word| word.into()).collect_vec();
     debug_assert!(words.iter().all(|word| !word.raw_word().is_empty()));
     fn build_accepting_loop<A: Alphabet>(
+        alphabet: &A,
         tree: &mut RightCongruence<A>,
         state: usize,
         access: Vec<A::Symbol>,
@@ -27,15 +23,14 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
             access.push(*symbol);
             trace!("adding state {:?}", access);
             let next = tree.add_state(access.clone());
-            tree.add_edge(current, A::expression(*symbol), next, Void);
+            tree.add_edge((current, alphabet.make_expression(*symbol), next));
             current = next;
         }
-        tree.add_edge(
+        tree.add_edge((
             current,
-            A::expression(loop_segment[loop_segment.len() - 1]),
+            alphabet.make_expression(loop_segment[loop_segment.len() - 1]),
             state,
-            Void,
-        );
+        ))
     }
     let mut tree = RightCongruence::new(alphabet.clone());
     let root = tree.add_state((vec![], Void));
@@ -46,9 +41,9 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
         debug_assert!(!words.is_empty());
         debug_assert!(words.iter().all(|word| !word.raw_word().is_empty()));
         if words.len() == 1 && words[0].loop_index() == 0 {
-            build_accepting_loop(&mut tree, state, access, words[0].cycle());
+            build_accepting_loop(&alphabet, &mut tree, state, access, words[0].cycle());
         } else {
-            let mut map: Map<_, Set<_>> = Map::default();
+            let mut map: math::Map<_, math::Set<_>> = math::Map::default();
             for mut word in words {
                 let sym = word.pop_front();
                 debug_assert!(

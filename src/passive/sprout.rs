@@ -1,9 +1,9 @@
 use std::{
-    collections::{BTreeSet, VecDeque},
+    collections::{BTreemath::Set, VecDeque},
     fmt::Display,
 };
 
-use automata::{prelude::*, transition_system::operations::ProductIndex, Map, Set};
+use automata::{prelude::*, transition_system::operations::ProductIndex};
 use itertools::Itertools;
 use tracing::trace;
 
@@ -31,11 +31,11 @@ pub trait ConsistencyCheck<A: Alphabet> {
 
 impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A, bool> {
     fn consistent(&self, cong: &RightCongruence<A>) -> bool {
-        let positive_indices: Set<_> = self
+        let positive_indices: math::Set<_> = self
             .positive_words()
             .filter_map(|w| cong.reached_state_index(w))
             .collect();
-        let negative_indices: Set<_> = self
+        let negative_indices: math::Set<_> = self
             .negative_words()
             .filter_map(|w| cong.reached_state_index(w))
             .collect();
@@ -51,11 +51,11 @@ impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A, bool> {
     }
 }
 
-/// Stores two DFAs and a set of conflicts between them.
+/// Stores two DFAs and a math::Set of conflicts between them.
 #[derive(Clone)]
 pub struct ConflictRelation<A: Alphabet> {
     dfas: [RightCongruence<A>; 2],
-    conflicts: Set<(usize, usize)>,
+    conflicts: math::Set<(StateIndex, StateIndex)>,
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
@@ -93,16 +93,7 @@ impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
 
 impl<A: Alphabet> std::fmt::Debug for ConflictRelation<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\t\t{}\n{:?}", "first DFA".blue(), self.dfas[0])?;
-        write!(f, "\t\t{}\n{:?}", "SECOND DFA".cyan(), self.dfas[1])?;
-        write!(
-            f,
-            "Conflicts\n{}",
-            self.conflicts
-                .iter()
-                .map(|(c, d)| format!("({c} | {d})"))
-                .join(", ")
-        )
+        todo!()
     }
 }
 
@@ -155,7 +146,7 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
         .intersection(&looping_words)
         .collect_dfa();
 
-    let mut conflicts = Set::default();
+    let mut conflicts = math::Set::default();
     let mut queue = VecDeque::from_iter(
         left_pta
             .accepting_states()
@@ -224,7 +215,7 @@ pub fn prefix_consistency_conflicts<A: Alphabet, S: std::borrow::Borrow<OmegaSam
         .flatten()
         .collect();
 
-    let mut conflicts = Set::default();
+    let mut conflicts = math::Set::default();
     for ProductIndex(l, r) in dfa.state_indices() {
         let reachable = dfa
             .reachable_state_indices_from(ProductIndex(l, r))
@@ -298,7 +289,7 @@ where
     let initial = cong.add_state((vec![], Void));
     let threshold = conflicts.threshold();
 
-    // We maintain a set of missing transitions and go through them in order of creation for the states and in order
+    // We maintain a math::Set of missing transitions and go through them in order of creation for the states and in order
     // give by alphabet for the symbols for one state (this amouts to BFS).
     let mut queue: VecDeque<_> = conflicts
         .alphabet()

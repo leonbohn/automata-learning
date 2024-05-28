@@ -1,6 +1,5 @@
+use automata::prelude::*;
 use std::hash::Hash;
-
-use automata::Map;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Experiment<S>(pub(super) Vec<S>);
@@ -13,7 +12,7 @@ pub struct OutputRow<X>(pub(super) Vec<X>);
 
 pub struct ObservationTable<S, X> {
     pub(crate) experiments: Vec<Experiment<S>>,
-    pub(crate) outputs: Map<Representative<S>, OutputRow<X>>,
+    pub(crate) outputs: math::Map<Representative<S>, OutputRow<X>>,
 }
 
 impl<S, X> ObservationTable<S, X>
@@ -23,7 +22,7 @@ where
     pub fn new() -> Self {
         Self {
             experiments: vec![],
-            outputs: Map::default(),
+            outputs: math::Map::default(),
         }
     }
 

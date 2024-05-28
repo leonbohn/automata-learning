@@ -1,9 +1,6 @@
 use automata::prelude::*;
 
-use crate::{
-    priority_mapping::{ClassifiesIdempotents, PriorityMapping},
-    AnnotatedCongruence,
-};
+use crate::priority_mapping::ClassifiesIdempotents;
 
 use super::PeriodicOmegaSample;
 
@@ -17,7 +14,8 @@ impl<A: Alphabet> ClassifiesIdempotents<A> for PeriodicOmegaSample<A> {
 mod tests {
     use automata::{transition_system::Dottable, RightCongruence, TransitionSystem};
 
-    use crate::{passive::sprout::tests::testing_larger_forc_sample, AnnotatedCongruence};
+    use crate::passive::sprout::tests::testing_larger_forc_sample;
+    use crate::priority_mapping::AnnotatedCongruence;
 
     #[test]
     #[ignore]

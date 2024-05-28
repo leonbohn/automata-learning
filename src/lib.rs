@@ -6,17 +6,14 @@
 #[macro_use]
 pub mod passive;
 
-/// This module deals with acceptance conditions and their inference.
-pub mod acceptance;
 /// Greedily LEarn Right Congruence algorithm, an algorithm that infers a
 /// right congruence relation from a consistency function.
 // pub mod glerc;
-mod priority_mapping;
 use automata::prelude::*;
-pub use priority_mapping::{AnnotatedCongruence, Annotation};
 
-/// Deals with active learning algorithms such as L*.
+// /// Deals with active learning algorithms such as L*.
 pub mod active;
+mod priority_mapping;
 
 pub(crate) mod prefixtree;
 

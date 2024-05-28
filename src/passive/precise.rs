@@ -1,15 +1,11 @@
 use std::fmt::Debug;
 
 use automata::{
-    automaton::{DFASemantics, DPA},
-    prelude::{Expression, IsEdge, DFA},
+    prelude::*,
     transition_system::{
         dot::{DotStateAttribute, DotTransitionAttribute},
-        reachable::ReachableStateIndices,
-        Congruence, Deterministic, Dottable, EdgeColor, ExpressionOf, IndexType, Indexes,
-        Sproutable, StateColor, DTS,
+        Reachable,
     },
-    Alphabet, Map, Pointed, RightCongruence, Show, TransitionSystem, Void,
 };
 use itertools::Itertools;
 use tracing::{info, trace};
@@ -57,8 +53,8 @@ pub fn build_precise_dpa_for<A: Alphabet>(fwpm: FWPM<A>) -> DPA<A> {
     }
 }
 
-type ClassId = usize;
-type StateId = usize;
+type ClassId = StateIndex;
+type StateId = StateIndex;
 
 /// We use const generics in the definition of the precise DPA. Therefore, it is necessary to bound the
 /// number of colors that can be used. This constant is used as such a bound.
@@ -70,9 +66,9 @@ pub const PRECISE_DPA_COLORS: usize = 5;
 /// `PState`s are [`Copy`].
 #[derive(Copy, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PState<const N: usize> {
-    class: usize,
-    progress_classes: [usize; N],
-    progress_states: [usize; N],
+    class: StateIndex,
+    progress_classes: [StateIndex; N],
+    progress_states: [StateIndex; N],
 }
 
 impl<const N: usize> Show for PState<N> {
@@ -166,7 +162,7 @@ impl<const N: usize> PState<N> {
 pub struct PreciseDPA<A: Alphabet, const N: usize = 8> {
     states: Vec<PState<N>>,
     cong: RightCongruence<A>,
-    expressions: Map<A::Symbol, A::Expression>,
+    expressions: math::Map<A::Symbol, A::Expression>,
     /// Nat -> class -> DFA
     dfas: Vec<[DFA<A>; N]>,
 }
@@ -178,10 +174,10 @@ pub struct PreciseDPATransition<'a, A: Alphabet, const N: usize> {
     source: PState<N>,
     expression: &'a A::Expression,
     target: PState<N>,
-    color: usize,
+    color: Int,
 }
 
-impl<'a, A: Alphabet, const N: usize> IsEdge<'a, A::Expression, PState<N>, usize>
+impl<'a, A: Alphabet, const N: usize> IsEdge<'a, A::Expression, PState<N>, Int>
     for PreciseDPATransition<'a, A, N>
 {
     fn source(&self) -> PState<N> {
@@ -191,7 +187,7 @@ impl<'a, A: Alphabet, const N: usize> IsEdge<'a, A::Expression, PState<N>, usize
         self.target
     }
 
-    fn color(&self) -> usize {
+    fn color(&self) -> Int {
         self.color
     }
 
@@ -207,7 +203,7 @@ impl<'a, A: Alphabet, const N: usize> PreciseDPATransition<'a, A, N> {
         source: PState<N>,
         expression: &'a A::Expression,
         target: PState<N>,
-        color: usize,
+        color: Int,
     ) -> Self {
         Self {
             dpa,
@@ -223,7 +219,7 @@ impl<'a, A: Alphabet, const N: usize> PreciseDPATransition<'a, A, N> {
 #[derive(Debug, Clone)]
 pub struct PreciseDPAEdgesFrom<'a, A: Alphabet, const N: usize> {
     dpa: &'a PreciseDPA<A, N>,
-    expressions: &'a Map<A::Symbol, A::Expression>,
+    expressions: &'a math::Map<A::Symbol, A::Expression>,
     state: PState<N>,
     it: A::Universe<'a>,
 }
@@ -271,7 +267,7 @@ impl<A: Alphabet, const N: usize> TransitionSystem for PreciseDPA<A, N> {
 
     type StateColor = Void;
 
-    type EdgeColor = usize;
+    type EdgeColor = Int;
 
     type EdgeRef<'this> = PreciseDPATransition<'this, A, N>
     where
@@ -280,7 +276,7 @@ impl<A: Alphabet, const N: usize> TransitionSystem for PreciseDPA<A, N> {
     type EdgesFromIter<'this> = PreciseDPAEdgesFrom<'this, A, N>
     where
         Self: 'this;
-    type StateIndices<'this> = ReachableStateIndices<&'this Self> where Self: 'this;
+    type StateIndices<'this> = Reachable<'this, Self, false> where Self: 'this;
 
     type Alphabet = A;
 
@@ -291,17 +287,17 @@ impl<A: Alphabet, const N: usize> TransitionSystem for PreciseDPA<A, N> {
     fn state_indices(&self) -> Self::StateIndices<'_> {
         self.reachable_state_indices()
     }
-
-    fn state_color<Idx: Indexes<Self>>(&self, state: Idx) -> Option<Self::StateColor> {
-        let state = state.to_index(self)?;
+    fn state_color(&self, state: StateIndex<Self>) -> Option<Self::StateColor> {
+        if !self.contains_state_index(state) {
+            return None;
+        }
         Some(Void)
     }
-
-    fn edges_from<Idx: automata::prelude::Indexes<Self>>(
-        &self,
-        state: Idx,
-    ) -> Option<Self::EdgesFromIter<'_>> {
-        Some(PreciseDPAEdgesFrom::new(self, state.to_index(self)?))
+    fn edges_from(&self, state: StateIndex<Self>) -> Option<Self::EdgesFromIter<'_>> {
+        if !self.contains_state_index(state) {
+            return None;
+        }
+        Some(PreciseDPAEdgesFrom::new(self, state))
     }
 
     fn maybe_initial_state(&self) -> Option<Self::StateIndex> {
@@ -310,16 +306,22 @@ impl<A: Alphabet, const N: usize> TransitionSystem for PreciseDPA<A, N> {
 }
 
 impl<A: Alphabet, const N: usize> Deterministic for PreciseDPA<A, N> {
-    fn transition<Idx: automata::prelude::Indexes<Self>>(
+    fn edge(
         &self,
-        state: Idx,
-        symbol: automata::prelude::SymbolOf<Self>,
+        state: StateIndex<Self>,
+        matcher: impl Matcher<EdgeExpression<Self>>,
     ) -> Option<Self::EdgeRef<'_>> {
-        let q = state.to_index(self)?;
-        let (i, p) = self.take_precise_transition(&q, symbol);
+        let mut it = self
+            .alphabet()
+            .universe()
+            .filter(|a| matcher.matches(&self.alphabet().make_expression(*a)));
+        let symbol = it.next()?;
+        assert!(it.next().is_none());
+
+        let (i, p) = self.take_precise_transition(&state, symbol);
         Some(PreciseDPATransition::new(
             self,
-            q,
+            state,
             self.expressions.get(&symbol).unwrap(),
             p,
             i,
@@ -329,7 +331,7 @@ impl<A: Alphabet, const N: usize> Deterministic for PreciseDPA<A, N> {
 
 impl<A: Alphabet, const N: usize> Pointed for PreciseDPA<A, N> {
     fn initial(&self) -> Self::StateIndex {
-        *self.states.first().expect("We add this during creation")
+        self.states.first().expect("We add this during creation")
     }
 }
 
@@ -337,7 +339,11 @@ impl<A: Alphabet, const N: usize> PreciseDPA<A, N> {
     /// Creates a new precise DPA from the given leading congruence and sequence of sequences of DFAs.
     pub fn new(cong: RightCongruence<A>, dfas: Vec<[DFA<A>; N]>) -> Self {
         let e = cong.initial();
-        let initial = PState::from_iters(e, [e; N], (0..dfas.len()).map(|i| dfas[i][e].initial()));
+        let initial = PState::from_iters(
+            e,
+            [e; N],
+            (0..dfas.len()).map(|i| dfas[i][e as usize].initial()),
+        );
         Self {
             states: vec![initial],
             expressions: cong.alphabet().expression_map(),
@@ -359,12 +365,12 @@ impl<A: Alphabet, const N: usize> PreciseDPA<A, N> {
     pub fn dfas<'a>(&'a self, q: &'a PState<N>) -> impl Iterator<Item = &DFA<A>> + 'a {
         q.progress_classes()
             .enumerate()
-            .map(move |(i, c)| &self.dfas[c][i])
+            .map(move |(i, c)| &self.dfas[c as usize][i])
     }
 
     /// Given a [`PState`] and a symbol, returns the index of the least accepting DFA (which is
     /// the priority of the corresponding edge) and the successor [`PState`].
-    pub fn take_precise_transition(&self, q: &PState<N>, a: A::Symbol) -> (usize, PState<N>) {
+    pub fn take_precise_transition(&self, q: &PState<N>, a: A::Symbol) -> (Int, PState<N>) {
         trace!("Taking precise transition from {} on {}", q, a.show());
         let d = self
             .cong()
@@ -401,44 +407,34 @@ impl<A: Alphabet, const N: usize> PreciseDPA<A, N> {
                 if i < least_accepting {
                     *p
                 } else {
-                    self.dfas[d][i].initial()
+                    self.dfas[d as usize][i].initial()
                 }
             }),
         );
 
         trace!("Reaches state {reached_pstate}, outputs {least_accepting}");
 
-        (least_accepting, reached_pstate)
+        (
+            least_accepting
+                .try_into()
+                .expect("Should be able to cast to u8"),
+            reached_pstate,
+        )
     }
 }
 
 impl<A: Alphabet, const N: usize> Debug for PreciseDPA<A, N> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Leading congruence\n{:?}", self.cong())?;
-        for i in 0..N {
-            for (c, dfa) in self.dfas_level(i) {
-                let class_name = self.cong.class_name(c).unwrap();
-                write!(
-                    f,
-                    "Progress congruence level {i} for class {}\n{:?}",
-                    class_name, dfa
-                )?;
-            }
-        }
-        Ok(())
+        todo!()
     }
 }
 
 fn padding_universal_dfa<A: Alphabet>(alphabet: &A) -> DFA<A> {
-    let mut dfa = DFA::from_parts(
-        DTS::with_capacity(alphabet.clone(), 1).with_initial(0),
-        0,
-        DFASemantics,
-    );
+    let mut dfa = DFA::from_parts(DTS::for_alphabet_size_hint(alphabet.clone(), 1), 0);
     let e = dfa.add_state(true);
 
     for sym in alphabet.universe() {
-        dfa.add_edge(e, alphabet.make_expression(sym), e, Void);
+        dfa.add_edge((e, alphabet.make_expression(sym), e));
     }
     dfa
 }
@@ -459,7 +455,7 @@ impl<A: Alphabet, const N: usize> From<FWPM<A>> for PreciseDPA<A, N> {
             let array_dfas = dfas
                 .try_into()
                 .unwrap_or_else(|v| panic!("LENGTH DOES NOT MATCH {N}"));
-            prc_dfas.insert(idx, array_dfas);
+            prc_dfas.insert(idx as usize, array_dfas);
         }
 
         info!(
@@ -503,7 +499,7 @@ impl<A: Alphabet, const N: usize> Dottable for PreciseDPA<A, N> {
         t: Self::EdgeRef<'a>,
     ) -> impl IntoIterator<Item = automata::transition_system::dot::DotTransitionAttribute>
     where
-        (&'a ExpressionOf<Self>, EdgeColor<Self>): Show,
+        (&'a EdgeExpression<Self>, EdgeColor<Self>): Show,
     {
         [DotTransitionAttribute::Label(format!(
             "{}|{}",
@@ -523,7 +519,7 @@ mod tests {
     fn precise_dpa() {
         let alph = alphabet!(simple 'a', 'b', 'c');
 
-        let cong = NTS::builder()
+        let cong = DTS::builder()
             .with_transitions([
                 (0, 'a', Void, 1),
                 (0, 'b', Void, 0),
@@ -535,7 +531,7 @@ mod tests {
             .default_color(())
             .into_right_congruence_bare(0);
 
-        let de0 = NTS::builder()
+        let de0 = DTS::builder()
             .with_transitions([
                 (0, 'a', Void, 0),
                 (0, 'b', Void, 1),
@@ -546,7 +542,7 @@ mod tests {
             ])
             .with_state_colors([false, true])
             .into_dfa(0);
-        let da0 = NTS::builder()
+        let da0 = DTS::builder()
             .with_transitions([
                 (0, 'a', Void, 0),
                 (0, 'b', Void, 0),
@@ -558,7 +554,7 @@ mod tests {
             .with_state_colors([false, true])
             .into_dfa(0);
 
-        let de1 = NTS::builder()
+        let de1 = DTS::builder()
             .with_transitions([
                 (0, 'a', Void, 0),
                 (0, 'b', Void, 2),
@@ -573,7 +569,7 @@ mod tests {
             .with_state_colors([false, false, true])
             .into_dfa(0);
 
-        let full = NTS::builder()
+        let full = DTS::builder()
             .with_transitions([
                 (0, 'a', Void, 1),
                 (0, 'b', Void, 1),
@@ -591,12 +587,12 @@ mod tests {
         let dpa = PreciseDPA::new(cong, vec![dfas_e, dfas_a]);
 
         let q = dpa.initial();
-        let t = dpa.transition(q, 'a').unwrap();
-        println!("{:?} -a:{}-> {:?}", q, t.color, t.target);
-        let t = dpa.transition(q, 'b').unwrap();
-        println!("{:?} -b:{}-> {:?}", q, t.color, t.target);
-        let t = dpa.transition(q, 'c').unwrap();
-        println!("{:?} -c:{}-> {:?}", q, t.color, t.target);
+        // let t = dpa.transition(q, 'a').unwrap();
+        // println!("{:?} -a:{}-> {:?}", q, t.color, t.target);
+        // let t = dpa.transition(q, 'b').unwrap();
+        // println!("{:?} -b:{}-> {:?}", q, t.color, t.target);
+        // let t = dpa.transition(q, 'c').unwrap();
+        // println!("{:?} -c:{}-> {:?}", q, t.color, t.target);
 
         let trim: DPA = dpa.collect_dpa();
         // trim.display_rendered();

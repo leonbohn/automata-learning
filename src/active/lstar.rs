@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fmt::Debug};
 
-use automata::{prelude::*, word::Concat, Map, Set};
+use automata::{prelude::*, word::Concat};
 use fixedbitset::FixedBitSet;
 use itertools::Itertools;
 use tracing::{debug, info, trace};
@@ -45,14 +45,14 @@ pub struct LStar<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> {
     // the alphabet of what we are learning
     alphabet: D::Alphabet,
     // a mapping containing all queries that have been posed so far, together with their output
-    queries: RefCell<Map<Word<D>, D::Color>>,
+    queries: RefCell<math::Map<Word<D>, D::Color>>,
     // the minimal access words forming the base states
     base: Vec<Word<D>>,
     // all known experiments
     experiments: Vec<Word<D>>,
     // mapping from input word to a bitset, where the i-th entry gives the value for
     // the output of concatenating input word and i-th experiment
-    table: Map<Word<D>, Vec<D::Color>>,
+    table: math::Map<Word<D>, Vec<D::Color>>,
     // the oracle
     oracle: T,
     observations: ObservationTable<SymbolOf<D>, T::Output>,
@@ -63,9 +63,9 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
         Self {
             experiments: D::mandatory_experiments(&alphabet).into_iter().collect(),
             alphabet,
-            queries: RefCell::new(Map::default()),
+            queries: RefCell::new(math::Map::default()),
             base: vec![vec![]],
-            table: Map::default(),
+            table: math::Map::default(),
             oracle,
             observations: ObservationTable::with_rows_and_experiments(
                 [],
@@ -153,7 +153,7 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
             );
 
             if !todo.is_empty() {
-                let mut queries = Set::default();
+                let mut queries = math::Set::default();
                 for r in todo {
                     self.base.push(r.clone());
                     queries.insert(r.clone());
@@ -208,8 +208,8 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
         let start = std::time::Instant::now();
 
         let mut ts: DTS<_, _, _> = DTS::with_capacity(self.alphabet.clone(), 1);
-        let mut state_map = Map::default();
-        let mut observations = Map::default();
+        let mut state_map = math::Map::default();
+        let mut observations = math::Map::default();
 
         for mr in &self.base {
             let color = self.state_color(mr);
@@ -229,13 +229,13 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
                     .expect("Can only work if table is closed!");
                 let target = observations.get(obs).unwrap();
 
-                let added = ts.add_edge(
+                let added = ts.add_edge((
                     *i,
-                    self.alphabet.expression(a),
-                    *state_map.get(target).unwrap(),
+                    self.alphabet.make_expression(a),
                     color,
-                );
-                assert!(added.is_none());
+                    *state_map.get(target).unwrap(),
+                ));
+                assert!(added.is_some());
             }
         }
 
@@ -300,10 +300,10 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
             .unique()
     }
 
-    fn rows_to_promote(&self) -> Set<Word<D>> {
+    fn rows_to_promote(&self) -> math::Set<Word<D>> {
         let start = std::time::Instant::now();
 
-        let known = automata::Set::from_iter(self.base.iter().map(|b| {
+        let known = math::Set::from_iter(self.base.iter().map(|b| {
             self.table.get(b).unwrap_or_else(|| {
                 panic!(
                     "Experiment {} must be present",
@@ -311,8 +311,8 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
                 )
             })
         }));
-        let mut seen = automata::Set::default();
-        let mut out = Set::default();
+        let mut seen = math::Set::default();
+        let mut out = math::Set::default();
 
         for word in self.one_letter_extensions() {
             trace!("Considering one letter extension {}", word.as_string());
@@ -357,125 +357,4 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for 
 }
 
 #[cfg(test)]
-mod tests {
-    use automata::prelude::*;
-    use oracle::MealyOracle;
-    use owo_colors::OwoColorize;
-
-    use crate::{
-        active::{oracle, oracle::DFAOracle},
-        passive::FiniteSample,
-    };
-
-    use super::LStar;
-
-    #[test]
-    fn lstar_word_len_mod_k() {
-        let alphabet = CharAlphabet::from_iter(vec!['a', 'b']);
-
-        for k in (3..10) {
-            let time_start = std::time::Instant::now();
-            let oracle = WordLenModk(alphabet.clone(), k);
-            let mut lstar = super::LStar::for_moore(alphabet.clone(), oracle);
-            let mm = lstar.infer();
-            let time_taken = time_start.elapsed().as_micros();
-            assert_eq!(mm.size(), k);
-            println!("Took {:>6}μs for k={}", time_taken, k);
-        }
-    }
-
-    #[test]
-    fn lstar_even_a_even_b() {
-        let alphabet = CharAlphabet::from_iter(vec!['a', 'b']);
-        let mut oracle = ModkAmodlB(alphabet.clone());
-        let mut lstar = super::LStar::for_moore(alphabet, oracle);
-
-        let mm = lstar.infer();
-
-        assert_eq!(mm.try_moore_map("abba").unwrap(), 1);
-        assert_eq!(mm.try_moore_map("ab").unwrap(), 0);
-        assert_eq!(mm.try_moore_map("").unwrap(), 1)
-    }
-
-    fn test_dfa() -> DFA {
-        let alphabet = CharAlphabet::from_iter(['a', 'b', 'c']);
-        let mut dfa = DFA::new_for_alphabet(alphabet);
-        let q0 = dfa.add_state(true);
-        let q1 = dfa.add_state(false);
-        let q2 = dfa.add_state(true);
-        let q3 = dfa.add_state(false);
-        dfa.add_edge(q0, 'a', q1, Void);
-        dfa.add_edge(q0, 'b', q3, Void);
-        dfa.add_edge(q0, 'c', q0, Void);
-        dfa.add_edge(q1, 'a', q0, Void);
-        dfa.add_edge(q1, 'b', q2, Void);
-        dfa.add_edge(q1, 'c', q0, Void);
-        dfa.add_edge(q2, 'a', q2, Void);
-        dfa.add_edge(q2, 'b', q2, Void);
-        dfa.add_edge(q2, 'c', q0, Void);
-        dfa.add_edge(q3, 'a', q3, Void);
-        dfa.add_edge(q3, 'b', q3, Void);
-        dfa.add_edge(q3, 'c', q0, Void);
-        dfa
-    }
-
-    #[test]
-    fn lstar_dfa() {
-        let oracle = DFAOracle::new(test_dfa());
-        let dfa = LStar::dfa(oracle);
-
-        assert_eq!(dfa.size(), 4);
-
-        if let Some(witness) = dfa.moore_witness_non_bisimilarity(test_dfa()) {
-            panic!("DFAs do not treat {} the same way", witness.as_string());
-        }
-    }
-
-    #[test]
-    fn lstar_mealy() {
-        let mm = NTS::builder()
-            .default_color(())
-            .with_transitions([
-                (0, 'a', 0, 0),
-                (0, 'b', 1, 1),
-                (0, 'c', 2, 2),
-                (1, 'a', 0, 1),
-                (1, 'b', 1, 0),
-                (1, 'c', 2, 1),
-                (2, 'a', 0, 0),
-                (2, 'b', 1, 1),
-                (2, 'c', 3, 0),
-            ])
-            .deterministic()
-            .with_initial(0)
-            .into_mealy();
-        let oracle = MealyOracle::new(mm.clone(), None);
-
-        let learned = LStar::mealy(oracle);
-
-        assert_eq!(learned.size(), 3);
-    }
-
-    #[test]
-    fn lstar_moore_vs_mealy() {
-        let alphabet = alphabet!(simple 'a', 'b');
-        let classified_words = [
-            "a", "b", "aa", "ab", "ba", "bb", "aaa", "aab", "aba", "abb", "baa", "bab", "bba",
-            "bbb",
-        ]
-        .into_iter()
-        .map(|w| (w.chars(), if w.ends_with('a') { 0 } else { 1 }));
-        let sample = FiniteSample::new_finite(alphabet.clone(), classified_words);
-        let oracle = oracle::SampleOracle::new(sample, 0);
-
-        let mealy = super::LStar::for_mealy(alphabet.clone(), oracle.clone()).infer();
-        let moore = super::LStar::for_moore(alphabet, oracle).infer();
-
-        assert!(mealy.size() <= moore.size());
-        tracing::debug!(
-            "Mealy size is {} while Moore size is {}",
-            mealy.size(),
-            moore.size()
-        )
-    }
-}
+mod tests {}

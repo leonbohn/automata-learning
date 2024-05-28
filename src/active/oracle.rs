@@ -278,10 +278,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use automata::{
-        transition_system::{Dottable, NTS},
-        TransitionSystem,
-    };
+    use automata::prelude::*;
 
     use crate::active::LStar;
 

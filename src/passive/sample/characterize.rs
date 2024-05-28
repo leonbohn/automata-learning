@@ -7,27 +7,15 @@ use std::{
     sync::Arc,
 };
 
-use automata::{
-    automaton::{IntoDPA, OmegaAcceptanceCondition},
-    prelude::*,
-    transition_system::{operations::Quotient, reachable::ReachableStateIndices},
-    word::Concat,
-    Map, Set,
-};
+use automata::{prelude::*, transition_system::operations::Quotient};
 use bimap::BiMap;
 use itertools::Itertools;
 use tracing::{debug, info, trace};
 
-use crate::{
-    active::{oracle::MealyOracle, LStar},
-    passive::fwpm::FWPM,
-    priority_mapping::{CongruentPriorityMapping, PriorityMapping},
-};
-
 use super::{FiniteSample, OmegaSample, Sample};
 type DFASample<D> = FiniteSample<<D as TransitionSystem>::Alphabet, bool>;
 
-fn dpa<M: Congruence<EdgeColor = usize>>(dpa: IntoDPA<M>) -> OmegaSample<M::Alphabet, bool>
+fn dpa<M: Deterministic<EdgeColor = Int>>(dpa: IntoDPA<M>) -> OmegaSample<M::Alphabet, bool>
 where
     M: Clone,
 {
@@ -51,13 +39,13 @@ where
     todo!()
 }
 
-fn right_congruence_by_omega_words<M: Congruence<EdgeColor = usize>>(
+fn right_congruence_by_omega_words<M: Congruence<EdgeColor = Int>>(
     cong: &Quotient<M>,
 ) -> OmegaSample<M::Alphabet, bool> {
     let start = std::time::Instant::now();
 
-    let mut pos = Set::default();
-    let mut neg = Set::default();
+    let mut pos = math::Set::default();
+    let mut neg = math::Set::default();
 
     let class_count = cong.partition().size();
     for mtr in cong.minimal_transition_representatives() {
@@ -69,17 +57,17 @@ fn right_congruence_by_omega_words<M: Congruence<EdgeColor = usize>>(
             mtr.show(),
             reached
         );
-        for (mr, separate) in cong.minimal_representatives() {
+        for mr in cong.minimal_representatives() {
             trace!(
                 "Considering minimal representative {} with id {}",
                 mr.show(),
-                separate
+                mr.state_index()
             );
-            if reached == separate {
+            if reached == mr.state_index() {
                 continue;
             }
             let q = cong.unwrap_class_representative(reached);
-            let p = cong.unwrap_class_representative(separate);
+            let p = cong.unwrap_class_representative(separate.state_index());
             assert!(p != q, "Same state cannot be in two different classes");
 
             let suffix = cong

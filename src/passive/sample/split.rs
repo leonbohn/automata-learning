@@ -1,7 +1,4 @@
-use automata::{
-    congruence::FORC, transition_system::Indexes, Alphabet, Class, Color, Map, RightCongruence,
-    TransitionSystem,
-};
+use automata::{congruence::FORC, prelude::*};
 use itertools::Itertools;
 
 use crate::passive::sprout::{iteration_consistency_conflicts, sprout};
@@ -9,7 +6,7 @@ use crate::passive::sprout::{iteration_consistency_conflicts, sprout};
 use super::{OmegaSample, Sample};
 
 /// An [`OmegaSample`] restricted/split onto one [`Class`] of a [`RightCongruence`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct ClassOmegaSample<'a, A: Alphabet, C: Color> {
     congruence: &'a RightCongruence<A>,
     class: Class<A::Symbol>,
@@ -61,7 +58,7 @@ impl<'a, A: Alphabet, C: Color> ClassOmegaSample<'a, A, C> {
             class,
             sample: Sample {
                 alphabet,
-                words: Map::default(),
+                words: math::Map::default(),
             },
         }
     }
@@ -69,29 +66,24 @@ impl<'a, A: Alphabet, C: Color> ClassOmegaSample<'a, A, C> {
 
 /// Represents a right congruence relation together with a collection of split samples, one
 /// associated with each class of the congruence.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct SplitOmegaSample<'a, A: Alphabet, C: Color> {
     congruence: &'a RightCongruence<A>,
-    split: Map<usize, ClassOmegaSample<'a, A, C>>,
+    split: math::Map<StateIndex, ClassOmegaSample<'a, A, C>>,
 }
 
 impl<'a, A: Alphabet, C: Color> SplitOmegaSample<'a, A, C> {
     /// Creates a new object from the given congruence and the split
     pub fn new(
         congruence: &'a RightCongruence<A>,
-        split: Map<usize, ClassOmegaSample<'a, A, C>>,
+        split: math::Map<StateIndex, ClassOmegaSample<'a, A, C>>,
     ) -> Self {
         Self { congruence, split }
     }
 
     /// Obtain a reference to the split sample for the given class/index.
-    pub fn get<I: Indexes<RightCongruence<A>>>(
-        &self,
-        index: I,
-    ) -> Option<&ClassOmegaSample<'a, A, C>> {
-        index
-            .to_index(self.congruence)
-            .and_then(|idx| self.split.get(&idx))
+    pub fn get(&self, index: StateIndex) -> Option<&ClassOmegaSample<'a, A, C>> {
+        self.split.get(&index)
     }
 
     /// Obtains an iterator over all classes in the split sample.
@@ -109,7 +101,7 @@ impl<'a, A: Alphabet> SplitOmegaSample<'a, A, bool> {
     /// Infers a family of right congruences bz first constructing a conflict relation which is then used
     /// as a constraint for the sprout/glerc algorithm.
     pub fn infer_forc(&self) -> FORC<A> {
-        let conflict_relations: Map<_, _> = self
+        let conflict_relations: math::Map<_, _> = self
             .classes()
             .map(|c| (c.clone(), iteration_consistency_conflicts(self, c.clone())))
             .collect();
@@ -118,7 +110,7 @@ impl<'a, A: Alphabet> SplitOmegaSample<'a, A, bool> {
             .into_iter()
             .map(|(c, conflicts)| {
                 (
-                    self.cong().get(c).unwrap(),
+                    self.cong().reached_state_index(c).unwrap(),
                     sprout(
                         conflicts,
                         vec![],

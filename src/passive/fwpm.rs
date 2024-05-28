@@ -1,10 +1,6 @@
 use std::fmt::Debug;
 
-use automata::{
-    congruence::FORC,
-    prelude::{Indexes, MealyMachine, MooreMachine},
-    Alphabet, Map, RightCongruence, TransitionSystem,
-};
+use automata::prelude::*;
 use itertools::Itertools;
 
 use super::precise::PreciseDPA;
@@ -16,7 +12,7 @@ use super::precise::PreciseDPA;
 #[derive(Clone)]
 pub struct FWPM<A: Alphabet> {
     leading: RightCongruence<A>,
-    pm: Map<usize, MooreMachine<A>>,
+    pm: math::Map<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
 }
 
 impl<A: Alphabet> FWPM<A> {
@@ -24,7 +20,7 @@ impl<A: Alphabet> FWPM<A> {
     pub fn empty<O: ToOwned<Owned = RightCongruence<A>>>(leading: O) -> Self {
         Self {
             leading: leading.to_owned(),
-            pm: Map::default(),
+            pm: math::Map::default(),
         }
     }
 
@@ -42,17 +38,12 @@ impl<A: Alphabet> FWPM<A> {
 
     /// Inserts a mapping for some index. If a mapping was already present for this index, it is
     /// wrapped in a `Some` and returned. If no mapping was present, `None` is returned.
-    pub fn insert_pm<I: Indexes<RightCongruence<A>>>(
+    pub fn insert_pm(
         &mut self,
-        index: I,
+        index: StateIndex<RightCongruence<A>>,
         pm: MooreMachine<A>,
     ) -> Option<MooreMachine<A>> {
-        self.pm.insert(
-            index
-                .to_index(&self.leading)
-                .expect("Only valid indices can be used!"),
-            pm,
-        )
+        self.pm.insert(index, pm)
     }
 
     /// Consumes self and builds a [`PreciseDPA`].
@@ -62,7 +53,7 @@ impl<A: Alphabet> FWPM<A> {
 
     /// Returns an iterator over the progress mealy machines, sorted by the index of the
     /// corresponding congruence class.
-    pub fn pms(&self) -> impl Iterator<Item = (usize, &MooreMachine<A>)> {
+    pub fn pms(&self) -> impl Iterator<Item = (StateIndex<RightCongruence<A>>, &MooreMachine<A>)> {
         self.pm
             .iter()
             .sorted_by(|x, y| x.0.cmp(y.0))
@@ -71,7 +62,10 @@ impl<A: Alphabet> FWPM<A> {
 
     /// Constructs a new FWPM from a given right congruence and map associating each class of the congruence
     /// with a priority mapping. Ensures that the each class has a priority mapping.
-    pub fn new(leading: RightCongruence<A>, pm: Map<usize, MooreMachine<A>>) -> Self {
+    pub fn new(
+        leading: RightCongruence<A>,
+        pm: math::Map<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
+    ) -> Self {
         assert_eq!(
             leading.size(),
             pm.len(),
@@ -87,16 +81,6 @@ impl<A: Alphabet> FWPM<A> {
 
 impl<A: Alphabet> Debug for FWPM<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "FWPM with Leading\n{:?}", self.leading())?;
-        for class_id in self.leading().state_indices() {
-            let class_name = self.leading().class_name(class_id).unwrap();
-            write!(
-                f,
-                "Priority mapping {class_id} for class {:?}\n{:?}",
-                class_name,
-                self.pm.get(&class_id).unwrap()
-            )?;
-        }
-        Ok(())
+        todo!()
     }
 }

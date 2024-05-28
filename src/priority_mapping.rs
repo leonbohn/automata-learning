@@ -7,7 +7,6 @@ use automata::{
     dag::Dag,
     prelude::*,
     transition_system::dot::{DotStateAttribute, Dottable},
-    Set,
 };
 
 /// A priority mapping is essentially a [`crate::MealyMachine`], i.e. it reads
@@ -127,7 +126,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
                 (Ok(_), _) => unreachable!(),
             });
 
-        let mut seen = Set::default();
+        let mut seen = math::Set::default();
         'outer: loop {
             if dag.masked_is_empty(&seen) {
                 break 'outer;
@@ -178,8 +177,8 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
     /// of the congruence to construct an annotated congruence.
     pub fn build<Q, C, F>(rc: &RightCongruence<A, Q, C>, f: F) -> Self
     where
-        Q: Clone,
-        C: Clone,
+        Q: Color,
+        C: Color,
         F: ClassifiesIdempotents<A>,
     {
         let annotations: automata::math::Map<_, _> = rc

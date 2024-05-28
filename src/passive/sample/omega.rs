@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use automata::{prelude::*, word::LinearWord, Map, Set};
+use automata::prelude::*;
 use itertools::Itertools;
 use tracing::{debug, trace};
 
@@ -92,7 +92,7 @@ impl TryFrom<Vec<String>> for OmegaSample<CharAlphabet, bool> {
             return Err(OmegaSampleParseError::MalformedSample);
         }
 
-        let mut words = Map::default();
+        let mut words = math::Map::default();
         'positive: loop {
             match lines.next() {
                 Some(word) => {
@@ -189,8 +189,8 @@ impl<A: Alphabet> OmegaSample<A, bool> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PeriodicOmegaSample<A: Alphabet> {
     alphabet: A,
-    positive: Set<PeriodicOmegaWord<A::Symbol>>,
-    negative: Set<PeriodicOmegaWord<A::Symbol>>,
+    positive: math::Set<PeriodicOmegaWord<A::Symbol>>,
+    negative: math::Set<PeriodicOmegaWord<A::Symbol>>,
 }
 
 impl<A: Alphabet> PeriodicOmegaSample<A> {
@@ -264,7 +264,7 @@ impl<A: Alphabet, C: Color> OmegaSample<A, C> {
         );
         let initial = cong.initial();
         // take self as is for epsilon
-        let mut split = Map::default();
+        let mut split = math::Map::default();
         split.insert(
             initial,
             ClassOmegaSample::new(cong, Class::epsilon(), self.clone()),
@@ -286,7 +286,7 @@ impl<A: Alphabet, C: Color> OmegaSample<A, C> {
                     .or_insert_with(|| {
                         ClassOmegaSample::empty(
                             cong,
-                            cong.class_name(reached).unwrap().clone(),
+                            Class::from(cong.state_to_mr(reached).unwrap().clone().into_inner()),
                             self.alphabet.clone(),
                         )
                     })
