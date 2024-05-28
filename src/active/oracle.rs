@@ -2,39 +2,9 @@ use automata::{prelude::*, transition_system::operations::MapStateColor, word::L
 
 use crate::passive::Sample;
 
-use super::LStarHypothesis;
+use super::{Hypothesis, LStarHypothesis};
 
 pub type Counterexample<A, O> = (Vec<<A as Alphabet>::Symbol>, O);
-
-pub trait Hypothesis {
-    type Alphabet: Alphabet;
-    type Output: Color;
-    type StateIndex: IndexType;
-
-    fn initial(&self) -> Self::StateIndex;
-    fn reached_index_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
-        &self,
-        input: W,
-        source: Self::StateIndex,
-    ) -> Self::StateIndex;
-    fn reached_index<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
-        &self,
-        input: W,
-    ) -> Self::StateIndex {
-        self.reached_index_from(input, self.initial())
-    }
-    fn output_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
-        &self,
-        input: W,
-        source: Self::StateIndex,
-    ) -> Self::Output;
-    fn output<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
-        &self,
-        input: W,
-    ) -> Self::Output {
-        self.output_from(input, self.initial())
-    }
-}
 
 /// A trait that encapsulates a minimally adequate teacher (MAT) for active learning. This is mainly used by
 /// L*-esque algorithms and can be implemented by wildly different types, for example an automaton, a function
@@ -44,13 +14,13 @@ pub trait Hypothesis {
 /// non-empty finite words a value of type `Output`. This means we can learn a Mealy machine by using priorities as
 /// the `Output` type, but it also enables us to learn a regular language/deterministic finite automaton by using
 /// `bool` as the `Output` type.
-
 pub trait Oracle {
     type Alphabet: Alphabet;
     type Output: Color;
     fn alphabet(&self) -> &Self::Alphabet;
 
     fn output<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(&self, word: W) -> Self::Output;
+
     fn equivalence<H>(
         &self,
         hypothesis: H,

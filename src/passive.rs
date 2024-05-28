@@ -26,7 +26,7 @@ use self::precise::PreciseDPA;
 pub use self::sample::{FiniteSample, OmegaSample};
 
 /// Module containing the implementations of the sprout/glerc algorithm.
-pub mod sprout;
+pub mod dpainf;
 
 /// Deals with families of weak priority mappings.
 pub mod fwpm;
@@ -38,7 +38,7 @@ pub mod precise;
 /// composed of a right congruence as well as an acceptance condition, which marks
 /// a classes as accepting if it is reached by a positive sample word.
 pub fn dfa_rpni<A: Alphabet>(sample: &FiniteSample<A, bool>) -> DFA<A> {
-    let cong = sprout::sprout(sample, vec![], true);
+    let cong = dpainf::dpainf(sample, vec![], true);
     let accepting = sample
         .positive_words()
         .map(|w| {
@@ -70,7 +70,7 @@ pub fn dba_rpni<A: Alphabet>(sample: &OmegaSample<A, bool>) -> DBA<A> {
 pub fn infer_precise_dpa<A: Alphabet>(
     sample: &OmegaSample<A, bool>,
 ) -> PreciseDPA<A, { precise::PRECISE_DPA_COLORS }> {
-    let cong = sample.infer_right_congruence();
+    let cong = sample.infer_prefix_congruence();
     let split = sample.split(&cong);
 
     let forc = split.infer_forc();

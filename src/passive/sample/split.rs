@@ -1,7 +1,7 @@
 use automata::{congruence::FORC, prelude::*};
 use itertools::Itertools;
 
-use crate::passive::sprout::{iteration_consistency_conflicts, sprout};
+use crate::passive::dpainf::{dpainf, iteration_consistency_conflicts};
 
 use super::{OmegaSample, Sample};
 
@@ -111,7 +111,7 @@ impl<'a, A: Alphabet> SplitOmegaSample<'a, A, bool> {
             .map(|(c, conflicts)| {
                 (
                     self.cong().reached_state_index(c).unwrap(),
-                    sprout(
+                    dpainf(
                         conflicts,
                         vec![],
                         // SeparatesIdempotents::new(split_sample.get(&c).expect("This must exist")),

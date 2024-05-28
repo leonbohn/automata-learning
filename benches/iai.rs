@@ -50,7 +50,7 @@ fn build_sample() -> OmegaSample<CharAlphabet, bool> {
 }
 
 fn infer_forc(sample: &OmegaSample<CharAlphabet, bool>) -> FORC<CharAlphabet> {
-    let cong = sample.infer_right_congruence();
+    let cong = sample.infer_prefix_congruence();
     let split = sample.split(&cong);
     split.infer_forc()
 }

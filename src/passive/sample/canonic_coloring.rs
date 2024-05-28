@@ -14,14 +14,14 @@ impl<A: Alphabet> ClassifiesIdempotents<A> for PeriodicOmegaSample<A> {
 mod tests {
     use automata::{transition_system::Dottable, RightCongruence, TransitionSystem};
 
-    use crate::passive::sprout::tests::testing_larger_forc_sample;
+    use crate::passive::dpainf::tests::testing_larger_forc_sample;
     use crate::priority_mapping::AnnotatedCongruence;
 
     #[test]
     #[ignore]
     fn classification() {
         let (alphabet, sample) = testing_larger_forc_sample();
-        let cong = sample.infer_right_congruence();
+        let cong = sample.infer_prefix_congruence();
         let split = sample.split(&cong);
         let forc = split.infer_forc();
         let periodic = split.get(0).unwrap().to_periodic_sample();

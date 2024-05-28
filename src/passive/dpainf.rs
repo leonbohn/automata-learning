@@ -279,7 +279,7 @@ impl<'a, A: Alphabet> ConsistencyCheck<A> for SeparatesIdempotents<'a, A> {
 }
 
 /// Runs the omega-sprout algorithm on a given conflict relation.
-pub fn sprout<A, C>(
+pub fn dpainf<A, C>(
     conflicts: C,
     additional_constraints: Vec<Box<dyn ConsistencyCheck<A>>>,
     allow_transitions_into_epsilon: bool,
@@ -385,7 +385,7 @@ pub(crate) mod tests {
     };
     use itertools::Itertools;
 
-    use crate::passive::{sample::OmegaSample, sprout::ConflictRelation, Sample};
+    use crate::passive::{dpainf::ConflictRelation, sample::OmegaSample, Sample};
 
     pub fn inf_aba_sample() -> (CharAlphabet, OmegaSample<CharAlphabet, bool>) {
         let Ok(sample) = OmegaSample::try_from(

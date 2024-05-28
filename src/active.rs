@@ -4,6 +4,9 @@ pub use lstar::*;
 pub(crate) mod oracle;
 pub use oracle::*;
 
+mod hypothesis;
+pub use hypothesis::*;
+
 mod mealy;
 mod moore;
 

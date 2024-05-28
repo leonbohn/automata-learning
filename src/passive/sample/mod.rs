@@ -10,9 +10,9 @@ use automata::prelude::*;
 use itertools::Itertools;
 use tracing::{debug, trace};
 
-use crate::{passive::sprout::iteration_consistency_conflicts, prefixtree::prefix_tree};
+use crate::{passive::dpainf::iteration_consistency_conflicts, prefixtree::prefix_tree};
 
-use super::sprout::{prefix_consistency_conflicts, sprout, SeparatesIdempotents};
+use super::dpainf::{dpainf, prefix_consistency_conflicts, SeparatesIdempotents};
 
 mod split;
 pub use split::{ClassOmegaSample, SplitOmegaSample};
@@ -245,7 +245,7 @@ mod tests {
                 (upw!("a"), false),
             ],
         );
-        let cong = sample.infer_right_congruence();
+        let cong = sample.infer_prefix_congruence();
         let split = sample.split(&cong);
 
         for w in ["b"] {
