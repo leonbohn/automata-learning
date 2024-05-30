@@ -34,6 +34,9 @@ pub mod fwpm;
 /// Defines the precise DPA.
 pub mod precise;
 
+/// Module defining ConsistencyCheck and implementing it for various omega acceptance conditions
+pub mod consistency;
+
 /// Executes the RPNI algorithm on the given sample. This returns a DFA that is
 /// composed of a right congruence as well as an acceptance condition, which marks
 /// a classes as accepting if it is reached by a positive sample word.
