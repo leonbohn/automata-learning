@@ -1,21 +1,20 @@
-use automata::{
-    prelude::*,
-    transition_system::{impls::NTState, path},
-    Set,
-};
+use automata::{math::Set, prelude::*, transition_system::path};
 
-use std::collections::HashSet;
+use std::{collections::HashSet, path::Iter};
 
 use crate::prefixtree::prefix_tree;
 
-use super::{consistency::ConsistencyCheck, Buchi, OmegaSample, Parity};
+use super::{consistency::ConsistencyCheck, OmegaSample};
 
 /// gives a deterministic acc_type omega automaton that is consistent with the given sample
 /// implements the sprout passive learning algorithm for omega automata from <https://arxiv.org/pdf/2108.03735.pdf>
-pub fn sprout<A: ConsistencyCheck<Initialized<DTS>>>(sample: OmegaSample, acc_type: A) -> A::Aut {
+pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_type: A) -> A::Aut {
     // make ts with initial state
-    let mut ts = DTS::from_parts(sample.alphabet().clone(), vec![NTState::new(Void)], vec![])
-        .with_initial(0);
+    // let mut temp_ts = DTS::for_alphabet(sample.alphabet().clone())
+    // temp_ts.add_state(Void);
+    // let mut ts = temp_ts.with_initial(0);
+
+    let mut ts = Automaton::new_with_initial_color(sample.alphabet().clone(), Void);
 
     // compute threshold
     let (lb, le) = sample
@@ -36,19 +35,20 @@ pub fn sprout<A: ConsistencyCheck<Initialized<DTS>>>(sample: OmegaSample, acc_ty
             return acc_type.default_automaton(&sample);
         }
         let source = ts.finite_run(u).unwrap().reached();
-        for q in ts.state_indices() {
+
+        for q in ts.state_indices_vec() {
             // try adding transition
-            ts.add_edge(source, a, q, Void);
+            ts.add_edge((source, a, Void, q));
             // continue if consistent
             if acc_type.consistent(&ts, &sample) {
                 continue 'outer;
             } else {
-                ts.remove_edges(source, a);
+                ts.remove_edges_from_matching(source, a);
             }
         }
         // if none consistent add new state
         let new_state = ts.add_state(Void);
-        ts.add_edge(source, a, new_state, Void);
+        ts.add_edge((source, a, Void, new_state));
     }
     acc_type.consistent_automaton(&ts, &sample)
 }
@@ -74,7 +74,7 @@ mod tests {
     use std::collections::HashSet;
 
     use super::*;
-    use crate::passive::{Buchi, OmegaSample, Parity};
+    use crate::passive::OmegaSample;
     use automata::prelude::*;
 
     #[test]
@@ -86,7 +86,7 @@ mod tests {
             OmegaSample::new_omega_from_pos_neg(sigma, [upw!("a"), upw!("a", "b")], [upw!("b")]);
 
         // build dba
-        let dba = NTS::builder()
+        let dba = DTS::builder()
             .with_transitions([
                 (0, 'a', true, 1),
                 (1, 'a', true, 0),
@@ -96,11 +96,9 @@ mod tests {
                 (2, 'b', false, 2),
             ])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0)
-            .into_dba();
+            .into_dba(0);
 
-        let res = sprout(sample, Buchi);
+        let res = sprout(sample, BuchiCondition);
         assert_eq!(format!("{:?}", res), format!("{:?}", dba));
     }
 
@@ -116,7 +114,7 @@ mod tests {
         );
 
         // build dba
-        let mut dba = NTS::builder()
+        let mut dba = DTS::builder()
             .with_transitions([
                 (0, 'a', true, 1),
                 (0, 'b', true, 2),
@@ -132,11 +130,9 @@ mod tests {
                 (5, 'b', false, 5),
             ])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0)
-            .into_dba();
+            .into_dba(0);
 
-        let res = sprout(sample, Buchi);
+        let res = sprout(sample, BuchiCondition);
         assert_eq!(format!("{:?}", res), format!("{:?}", dba));
     }
 
