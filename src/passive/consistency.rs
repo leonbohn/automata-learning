@@ -4,9 +4,9 @@ use std::iter;
 use std::ops::Not;
 
 use automata::{
+    math::Set,
     prelude::*,
     transition_system::{path::Lasso, Edge},
-    math::Set,
 };
 
 use crate::prefixtree::prefix_tree;
@@ -83,13 +83,7 @@ where
         let mut dba = ts
             .map_edge_colors_full(move |a, b, c, d| accepting.contains(&Edge::new(a, *b, c, d)))
             .erase_state_colors()
-            .with_initial(0)
             .collect_dba();
-
-        // let mut dba = aut
-        //     .collect_pointed::<DTS<CharAlphabet, Void, bool>>()
-        //     .0
-        //     .into_dba();
 
         // complete with sink state
         dba.complete_with_colors(Void, false);
@@ -207,11 +201,11 @@ where
             })
             .collect();
 
-        let all_transitions: Set<(usize, char)> = ts
+        let all_transitions: Set<_> = ts
             .state_indices()
             .cartesian_product(ts.alphabet().universe())
             .collect();
-        let z_path: Vec<Set<(usize, char)>>;
+        let z_path: Vec<Set<(u32, char)>>;
         let lowest: bool;
         match (
             pos_sets.contains(&all_transitions),
@@ -251,7 +245,7 @@ where
         }
         // build dpa from Zielonka path
 
-        let mut prio_map: HashMap<(usize, char), u8> = HashMap::new();
+        let mut prio_map: HashMap<(u32, char), u8> = HashMap::new();
         let mut prio = if lowest { 0 } else { 1 };
         for i in 0..z_path.len() - 1 {
             for t in z_path[i].difference(&z_path[i + 1]) {
@@ -266,13 +260,7 @@ where
                     .expect("transition missing in Zielonka path")
             })
             .erase_state_colors()
-            .with_initial(0)
             .collect_dpa();
-
-        // let mut dpa = aut
-        //     .collect_pointed::<DTS<CharAlphabet, Void, usize>>()
-        //     .0
-        //     .into_dpa();
 
         // complete with sink state
         dpa.complete_with_colors(Void, prio - 1);
@@ -302,7 +290,7 @@ fn has_zielonka_path(
     let mut z = all_transitions;
     while !z.is_empty() {
         // set new Z to union of subsets with different classification
-        let z_new: Set<(usize, char)>;
+        let z_new: Set<(u32, char)>;
         if class {
             // Z accepting
             neg_sets = neg_sets.into_iter().filter(|s| s.is_subset(&z)).collect();
@@ -325,11 +313,11 @@ fn has_zielonka_path(
 /// `class` is the classification of the set of all transitions
 /// returns `None` if no consistent Zielonka path exists
 fn zielonka_path(
-    mut pos_sets: Vec<Set<(usize, char)>>,
-    mut neg_sets: Vec<Set<(usize, char)>>,
-    all_transitions: Set<(usize, char)>,
+    mut pos_sets: Vec<Set<(u32, char)>>,
+    mut neg_sets: Vec<Set<(u32, char)>>,
+    all_transitions: Set<(u32, char)>,
     mut class: bool,
-) -> Option<Vec<Set<(usize, char)>>> {
+) -> Option<Vec<Set<(u32, char)>>> {
     // check if class of set with all transitions is valid
     if class {
         assert!(!neg_sets.contains(&all_transitions));
@@ -341,7 +329,7 @@ fn zielonka_path(
     let mut i = 0;
     while !z_path[i].is_empty() {
         // set new Z to union of subsets with different classification
-        let z_new: Set<(usize, char)>;
+        let z_new: Set<(u32, char)>;
         if class {
             // Z accepting
             neg_sets = neg_sets
@@ -469,38 +457,34 @@ mod tests {
     #[test]
     fn one_escaping() {
         // build transition system
-        let ts = NTS::builder()
+        let ts = DTS::builder()
             .with_transitions([(0, 'a', Void, 0)])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
+            .into_dts_with_initial(0);
 
         // build sample
         let sample = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
 
         // one word is escaping, the other is not
-        assert_eq!(Buchi.consistent(&ts, &sample), true);
-        assert_eq!(Parity.consistent(&ts, &sample), true);
+        assert_eq!(BuchiCondition.consistent(&ts, &sample), true);
+        assert_eq!(MinEvenParityCondition.consistent(&ts, &sample), true);
     }
 
     #[test]
     fn buchi_consistency() {
         // build transition systems
-        let ts = NTS::builder()
+        let ts = DTS::builder()
             .with_transitions([(0, 'b', Void, 0), (0, 'a', Void, 1), (1, 'b', Void, 1)])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
-        let ts2 = NTS::builder()
+            .into_dts_with_initial(0);
+        let ts2 = DTS::builder()
             .with_transitions([(0, 'b', Void, 0), (0, 'a', Void, 1), (1, 'a', Void, 0)])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
-        let ts3 = NTS::builder()
+            .into_dts_with_initial(0);
+        let ts3 = DTS::builder()
             .with_transitions([(0, 'a', Void, 0), (0, 'b', Void, 0)])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
+            .into_dts_with_initial(0);
 
         // build samples
         let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a", "b")], [upw!("b")]);
@@ -508,57 +492,55 @@ mod tests {
         let sample3 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("aab")], [upw!("b")]);
         let sample4 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
 
-        assert_eq!(Buchi.consistent(&ts, &sample1), true);
-        assert_eq!(Buchi.consistent(&ts2, &sample2), false);
-        assert_eq!(Buchi.consistent(&ts2, &sample3), true);
-        assert_eq!(Buchi.consistent(&ts3, &sample4), true);
+        assert_eq!(BuchiCondition.consistent(&ts, &sample1), true);
+        assert_eq!(BuchiCondition.consistent(&ts2, &sample2), false);
+        assert_eq!(BuchiCondition.consistent(&ts2, &sample3), true);
+        assert_eq!(BuchiCondition.consistent(&ts3, &sample4), true);
     }
 
     #[test]
     fn buchi_consistent_automaton() {
         // build transition system
-        let ts = NTS::builder()
+        let ts = DTS::builder()
             .with_transitions([(0, 'b', Void, 0), (0, 'a', Void, 1), (1, 'b', Void, 1)])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
+            .into_dts_with_initial(0);
 
         // build sample
         let sample = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a", "b")], [upw!("b")]);
 
         // build automaton
-        let dba = NTS::builder()
+        let dba = DTS::builder()
             .with_transitions([
-                (0, 'b', false, 0),
                 (0, 'a', true, 1),
-                (1, 'b', true, 1),
+                (0, 'b', false, 0),
                 (1, 'a', false, 2),
+                (1, 'b', true, 1),
                 (2, 'a', false, 2),
                 (2, 'b', false, 2),
             ])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0)
-            .into_dba();
+            .into_dba(0);
 
-        let res = Buchi.consistent_automaton(&ts, &sample);
+        let res = BuchiCondition.consistent_automaton(&ts, &sample);
+
+        println!("{:?}", res);
+        println!("{:?}", dba);
         assert_eq!(format!("{:?}", res), format!("{:?}", dba));
     }
 
     #[test]
     fn parity_consistency() {
         // build transition systems
-        let ts = NTS::builder()
+        let ts = DTS::builder()
             .with_transitions([(0, 'a', Void, 0)])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
-        let ts2 = NTS::builder()
+            .into_dts_with_initial(0);
+        let ts2 = DTS::builder()
             .with_transitions([(0, 'a', Void, 0), (0, 'b', Void, 0)])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
-        let ts3 = NTS::builder()
+            .into_dts_with_initial(0);
+        let ts3 = DTS::builder()
             .with_transitions([
                 (0, 'a', Void, 0),
                 (0, 'b', Void, 1),
@@ -566,13 +548,11 @@ mod tests {
                 (1, 'b', Void, 0),
             ])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
-        let ts4 = NTS::builder()
+            .into_dts_with_initial(0);
+        let ts4 = DTS::builder()
             .with_transitions([(0, 'a', Void, 0), (0, 'b', Void, 0), (0, 'c', Void, 0)])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
+            .into_dts_with_initial(0);
 
         // build samples
         let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
@@ -595,18 +575,18 @@ mod tests {
             [upw!("a")],
         );
 
-        assert_eq!(Parity.consistent(&ts, &sample1), true);
-        assert_eq!(Parity.consistent(&ts2, &sample2), true);
-        assert_eq!(Parity.consistent(&ts2, &sample3), false);
-        assert_eq!(Parity.consistent(&ts3, &sample4), false);
-        assert_eq!(Parity.consistent(&ts4, &sample5), false);
-        assert_eq!(Parity.consistent(&ts4, &sample6), true);
+        assert_eq!(MinEvenParityCondition.consistent(&ts, &sample1), true);
+        assert_eq!(MinEvenParityCondition.consistent(&ts2, &sample2), true);
+        assert_eq!(MinEvenParityCondition.consistent(&ts2, &sample3), false);
+        assert_eq!(MinEvenParityCondition.consistent(&ts3, &sample4), false);
+        assert_eq!(MinEvenParityCondition.consistent(&ts4, &sample5), false);
+        assert_eq!(MinEvenParityCondition.consistent(&ts4, &sample6), true);
     }
 
     #[test]
     fn parity_consistent_automaton() {
         // build transition system
-        let ts = NTS::builder()
+        let ts = DTS::builder()
             .with_transitions([
                 (0, 'a', Void, 0),
                 (0, 'b', Void, 1),
@@ -616,8 +596,7 @@ mod tests {
                 (2, 'b', Void, 2),
             ])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0);
+            .into_dts_with_initial(0);
 
         // build sample
         let sample = OmegaSample::new_omega_from_pos_neg(
@@ -627,23 +606,21 @@ mod tests {
         );
 
         // build automaton
-        let mut dpa = NTS::builder()
+        let mut dpa = DTS::builder()
             .with_transitions([
-                (0, 'a', 0, 0),
                 (0, 'b', 2, 1),
-                (1, 'a', 1, 0),
+                (0, 'a', 0, 0),
                 (1, 'b', 2, 2),
-                (2, 'a', 2, 0),
+                (1, 'a', 1, 0),
                 (2, 'b', 3, 2),
+                (2, 'a', 2, 0),
             ])
             .default_color(Void)
-            .deterministic()
-            .with_initial(0)
-            .into_dpa();
+            .into_dpa(0);
         // only needed because already complete automata not recognized yet
         dpa.complete_with_colors(Void, 3);
 
-        let res = Parity.consistent_automaton(&ts, &sample);
+        let res = MinEvenParityCondition.consistent_automaton(&ts, &sample);
         println!("{:?}", res);
         println!("{:?}", dpa);
         assert_eq!(format!("{:?}", res), format!("{:?}", dpa));
