@@ -34,6 +34,9 @@ pub mod fwpm;
 /// Defines the precise DPA.
 pub mod precise;
 
+/// Generate random samples for passive learning scenarios
+pub mod random;
+
 /// Executes the RPNI algorithm on the given sample. This returns a DFA that is
 /// composed of a right congruence as well as an acceptance condition, which marks
 /// a classes as accepting if it is reached by a positive sample word.
