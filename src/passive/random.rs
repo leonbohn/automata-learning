@@ -1,9 +1,15 @@
+use automata::automaton::InfiniteWordAutomaton;
 use automata::prelude::*;
 use automata::random::{
     generate_random_dba, generate_random_dpa, generate_random_omega_words
 };
 use automata::math::set::IndexSet;
 
+/// Generate a passive learning task with a [`DBA`] as target automaton. The target automaton is
+/// drawn randomly for an alphabet of size `num_symbols` and the automaton has size up to `aut_size`.
+/// For details about the random generation see documentation of [`generate_random_dba`].
+/// A training set and a test set of random omega words (of sizes `training_size` and `test_size` respectively)
+/// is drawn and labeled by running the words on the target automaton.
 pub fn generate_dba_set(
     num_symbols: usize,
     aut_size: usize,
@@ -24,12 +30,17 @@ pub fn generate_dba_set(
         generate_random_omega_words(&alphabet, 0, len_spoke, 1, len_cycle, training_size);
     let test_set = generate_random_omega_words(&alphabet, 0, len_spoke, 1, len_cycle, test_size);
     // label sets
-    let training_set: Vec<(ReducedOmegaWord<char>, bool)> = dba_label_set(&dba, &training_set);
-    let test_set: Vec<(ReducedOmegaWord<char>, bool)> = dba_label_set(&dba, &test_set);
+    let training_set: Vec<(ReducedOmegaWord<char>, bool)> = label_set(&dba, &training_set);
+    let test_set: Vec<(ReducedOmegaWord<char>, bool)> = label_set(&dba, &test_set);
 
     (dba, training_set, test_set)
 }
 
+/// Generate a passive learning task with a [`DPA`] as target automaton. The target automaton is
+/// drawn randomly for an alphabet of size `num_symbols` and the automaton has size up to `aut_size`.
+/// For details about the random generation see documentation of [`generate_random_dpa`].
+/// A training set and a test set of random omega words (of sizes `training_size` and `test_size` respectively)
+/// is drawn and labeled by running the words on the target automaton.
 pub fn generate_dpa_set(
     num_symbols: usize,
     aut_size: usize,
@@ -51,25 +62,21 @@ pub fn generate_dpa_set(
         generate_random_omega_words(&alphabet, 0, len_spoke, 1, len_cycle, training_size);
     let test_set = generate_random_omega_words(&alphabet, 0, len_spoke, 1, len_cycle, test_size);
     // label sets
-    let training_set: Vec<(ReducedOmegaWord<char>, bool)> = dpa_label_set(&dpa, &training_set);
-    let test_set: Vec<(ReducedOmegaWord<char>, bool)> = dpa_label_set(&dpa, &test_set);
+    let training_set: Vec<(ReducedOmegaWord<char>, bool)> = label_set(&dpa, &training_set);
+    let test_set: Vec<(ReducedOmegaWord<char>, bool)> = label_set(&dpa, &test_set);
 
     (dpa, training_set, test_set)
 }
 
-pub fn dba_label_set(
-    aut: &DBA,
+/// Label a `set` of [`ReducedOmegaWord`]s with the result of the given automaton.
+pub fn label_set<Z, C>(
+    aut: &InfiniteWordAutomaton<CharAlphabet, Z, Void, C, true>,
     set: &IndexSet<ReducedOmegaWord<char>>,
-) -> Vec<(ReducedOmegaWord<char>, bool)> {
-    set.into_iter()
-        .map(|w| (w.clone(), aut.accepts(w)))
-        .collect()
-}
-
-pub fn dpa_label_set(
-    aut: &DPA,
-    set: &IndexSet<ReducedOmegaWord<char>>,
-) -> Vec<(ReducedOmegaWord<char>, bool)> {
+) -> Vec<(ReducedOmegaWord<char>, bool)>
+where 
+    Z : OmegaSemantics<Void, C, Output = bool>,
+    C: Color,
+{
     set.into_iter()
         .map(|w| (w.clone(), aut.accepts(w)))
         .collect()
