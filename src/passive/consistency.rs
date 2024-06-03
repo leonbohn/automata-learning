@@ -268,7 +268,13 @@ where
     }
 
     fn default_automaton(&self, sample: &OmegaSample) -> Self::Aut {
-        todo!()
+        let mut dpa = prefix_tree(sample.alphabet().clone(), sample.positive_words())
+            .map_edge_colors(|_| 0)
+            .erase_state_colors()
+            .with_initial(0)
+            .collect_dpa();
+        dpa.complete_with_colors(Void, 1);
+        dpa
     }
 }
 
@@ -526,7 +532,7 @@ mod tests {
 
         println!("{:?}", res);
         println!("{:?}", dba);
-        assert_eq!(format!("{:?}", res), format!("{:?}", dba));
+        assert_eq!(res, dba);
     }
 
     #[test]
@@ -623,6 +629,27 @@ mod tests {
         let res = MinEvenParityCondition.consistent_automaton(&ts, &sample);
         println!("{:?}", res);
         println!("{:?}", dpa);
-        assert_eq!(format!("{:?}", res), format!("{:?}", dpa));
+        assert_eq!(res, dpa);
+    }
+
+    #[test]
+    fn parity_default_automaton() {
+        let sample = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("abb")], [upw!("ab")]);
+
+        let dpa = DTS::builder()
+            .with_transitions([
+                (0, 'a', 0, 1),
+                (1, 'b', 0, 2),
+                (2, 'b', 0, 0),
+                (0, 'b', 1, 3),
+                (1, 'a', 1, 3),
+                (2, 'a', 1, 3),
+                (3, 'a', 1, 3),
+                (3, 'b', 1, 3),
+            ])
+            .default_color(Void)
+            .into_dpa(0);
+        
+        assert_eq!(<MinEvenParityCondition as ConsistencyCheck<WithInitial<DTS>>>::default_automaton(&MinEvenParityCondition, &sample), dpa);
     }
 }
