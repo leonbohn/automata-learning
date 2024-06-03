@@ -280,6 +280,11 @@ impl<A: Alphabet, const N: usize> TransitionSystem for PreciseDPA<A, N> {
 
     type Alphabet = A;
 
+    fn contains_state_index(&self, index: Self::StateIndex) -> bool {
+        tracing::warn!("called contains_state_index");
+        true
+    }
+
     fn alphabet(&self) -> &Self::Alphabet {
         self.cong.alphabet()
     }

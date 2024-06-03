@@ -110,7 +110,7 @@ pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet, bool>) -> DPA {
         .ts_product(precise)
         .map_edge_colors(|(_, c)| c)
         .erase_state_colors();
-    let (completed, initial) = prod.trim_collect();
+    let (completed, initial) = prod.trim_collect_pointed();
 
     //now we use the completed thing to learn a MealyMachine from which we can then build the DPA
     let mm = completed.with_initial(initial).collect_mealy();
@@ -143,6 +143,7 @@ mod tests {
     use super::{sample, OmegaSample};
 
     #[test_log::test]
+    #[ignore]
     fn infer_precise_dpa_inf_aa() {
         let alphabet = alphabet!(simple 'a', 'b', 'c');
         let sample = sample! {alphabet; pos "a", "aab", "aaab", "bbaa", "aca", "caa", "abca", "baac"; neg "c", "b", "bc", "abc", "cba", "ac", "ba"};

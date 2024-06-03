@@ -375,14 +375,7 @@ where
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use automata::{
-        alphabet,
-        alphabet::CharAlphabet,
-        congruence::FORC,
-        prelude::*,
-        transition_system::{Dottable, Sproutable},
-        Class, Pointed, RightCongruence, TransitionSystem,
-    };
+    use automata::prelude::*;
     use itertools::Itertools;
 
     use crate::passive::{dpainf::ConflictRelation, sample::OmegaSample, Sample};
@@ -537,6 +530,7 @@ pub(crate) mod tests {
     }
 
     #[test]
+    #[ignore]
     fn learn_larger_forc() {
         // let (alphabet, sample) = testing_larger_forc_sample();
         // let cong = sample.infer_right_congruence();

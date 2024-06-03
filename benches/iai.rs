@@ -1,4 +1,4 @@
-use automata::{alphabet::CharAlphabet, congruence::FORC};
+use automata::prelude::*;
 use automata_learning::passive::OmegaSample;
 
 fn build_sample() -> OmegaSample<CharAlphabet, bool> {
@@ -49,7 +49,9 @@ fn build_sample() -> OmegaSample<CharAlphabet, bool> {
     OmegaSample::try_from(sample_str).unwrap()
 }
 
-fn infer_forc(sample: &OmegaSample<CharAlphabet, bool>) -> FORC<CharAlphabet> {
+fn infer_forc(
+    sample: &OmegaSample<CharAlphabet, bool>,
+) -> automata::congruence::FORC<CharAlphabet> {
     let cong = sample.infer_prefix_congruence();
     let split = sample.split(&cong);
     split.infer_forc()

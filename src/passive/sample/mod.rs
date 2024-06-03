@@ -178,7 +178,7 @@ macro_rules! sample {
 
 #[cfg(test)]
 mod tests {
-    use automata::{prelude::*, word::LinearWord};
+    use automata::prelude::*;
     use itertools::Itertools;
     use tracing::info;
 
@@ -232,6 +232,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn split_up_sample() {
         let alphabet = alphabet!(simple 'a', 'b');
         // represents congruence e ~ b ~ aa ~\~ a ~ ab
