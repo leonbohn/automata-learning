@@ -160,12 +160,13 @@ where
                     ) || has_zielonka_path(pos_sets, neg_sets, all_transitions, true)
                 }
                 (true, true) => {
-                    // this shouldn't happen, pos and neg induce same infinity set
-                    panic!("Set of all transitions cannot be both accepting and non-accepting")
+                    // set of all transitions is both accepting and non-accepting
+                    // no Zielonka path possible
+                    false
                 }
             }
         } else {
-            // bad pair was found when runnning sample words on transition system
+            // bad pair was found when running sample words on transition system
             false
         }
     }
@@ -584,6 +585,7 @@ mod tests {
         assert_eq!(MinEvenParityCondition.consistent(&ts, &sample1), true);
         assert_eq!(MinEvenParityCondition.consistent(&ts2, &sample2), true);
         assert_eq!(MinEvenParityCondition.consistent(&ts2, &sample3), false);
+        assert_eq!(MinEvenParityCondition.consistent(&ts2, &sample4), false);
         assert_eq!(MinEvenParityCondition.consistent(&ts3, &sample4), false);
         assert_eq!(MinEvenParityCondition.consistent(&ts4, &sample5), false);
         assert_eq!(MinEvenParityCondition.consistent(&ts4, &sample6), true);
@@ -623,8 +625,6 @@ mod tests {
             ])
             .default_color(Void)
             .into_dpa(0);
-        // only needed because already complete automata not recognized yet
-        dpa.complete_with_colors(Void, 3);
 
         let res = MinEvenParityCondition.consistent_automaton(&ts, &sample);
         println!("{:?}", res);
