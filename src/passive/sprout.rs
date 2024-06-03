@@ -21,7 +21,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
         .words()
         .map(|w| (w.spoke().len(), w.cycle().len()))
         .fold((0, 0), |(a0, a1), (b0, b1)| (a0.max(b0), a1.max(b1)));
-    let thresh = (lb + le ^ 2 + 1) as isize;
+    let thresh = (lb + le.pow(2) + 1) as isize;
 
     // while there are positive sample words that are escaping
     'outer: while let Some(escape_prefix) =
@@ -99,7 +99,7 @@ mod tests {
             .into_dba(0);
 
         let res = sprout(sample, BuchiCondition);
-        assert_eq!(format!("{:?}", res), format!("{:?}", dba));
+        assert_eq!(res, dba);
     }
 
     #[test]
@@ -133,7 +133,7 @@ mod tests {
             .into_dba(0);
 
         let res = sprout(sample, BuchiCondition);
-        assert_eq!(format!("{:?}", res), format!("{:?}", dba));
+        assert_eq!(res, dba);
     }
 
     #[test]
@@ -152,5 +152,63 @@ mod tests {
                 String::from("aaa")
             ]
         );
+    }
+
+    #[test]
+    fn sprout_parity() {
+        let sigma = alphabet!(simple 'a', 'b');
+
+        // build sample
+        let sample = OmegaSample::new_omega_from_pos_neg(
+            sigma,
+            [upw!("a"), upw!("aab")],
+            [upw!("b"), upw!("abb")],
+        );
+
+        // build dba
+        let dpa = DTS::builder()
+            .with_transitions([
+                (0, 'a', 0, 0),
+                (0, 'b', 0, 1),
+                (1, 'a', 0, 0),
+                (1, 'b', 1, 2),
+                (2, 'a', 1, 2),
+                (2, 'b', 1, 2),
+            ])
+            .default_color(Void)
+            .into_dpa(0);
+
+        let res = sprout(sample, MinEvenParityCondition);
+        assert_eq!(res, dpa);
+    }
+
+    #[test]
+    fn sprout_parity_thresh() {
+        let sigma = alphabet!(simple 'a', 'b');
+
+        // build sample
+        let sample = OmegaSample::new_omega_from_pos_neg(
+            sigma,
+            [upw!("a"), upw!("baaa")],
+            [upw!("ba"), upw!("baa")],
+        );
+
+        // build dba
+        let mut dpa = DTS::builder()
+            .with_transitions([
+                (0, 'a', 0, 1),
+                (1, 'a', 0, 1),
+                (0, 'b', 0, 2),
+                (2, 'a', 0, 3),
+                (3, 'a', 0, 4),
+                (4, 'a', 0, 5),
+                (5, 'b', 0, 2),
+            ])
+            .default_color(Void)
+            .into_dpa(0);
+        dpa.complete_with_colors(Void, 1);
+
+        let res = sprout(sample, MinEvenParityCondition);
+        assert_eq!(res, dpa);
     }
 }

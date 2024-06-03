@@ -241,7 +241,7 @@ where
             }
             (true, true) => {
                 // this shouldn't happen, pos and neg induce same infinity set
-                panic!("Set of all transitions cannot be both accepting and non-accepting");
+                panic!("Set of all transitions is both accepting and non-accepting. Transition system not consistent.");
             }
         }
         // build dpa from Zielonka path
@@ -264,7 +264,8 @@ where
             .collect_dpa();
 
         // complete with sink state
-        dpa.complete_with_colors(Void, prio - 1);
+        let max_prio = if prio % 2 == 0 { prio - 1 } else { prio };
+        dpa.complete_with_colors(Void, max_prio);
         dpa
     }
 
@@ -531,8 +532,6 @@ mod tests {
 
         let res = BuchiCondition.consistent_automaton(&ts, &sample);
 
-        println!("{:?}", res);
-        println!("{:?}", dba);
         assert_eq!(res, dba);
     }
 
@@ -560,6 +559,15 @@ mod tests {
             .with_transitions([(0, 'a', Void, 0), (0, 'b', Void, 0), (0, 'c', Void, 0)])
             .default_color(Void)
             .into_dts_with_initial(0);
+        let ts5 = DTS::builder()
+            .with_transitions([
+                (0, 'a', Void, 0),
+                (0, 'b', Void, 1),
+                (1, 'a', Void, 0),
+                (1, 'b', Void, 1),
+            ])
+            .default_color(Void)
+            .into_dts_with_initial(0);
 
         // build samples
         let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
@@ -581,6 +589,11 @@ mod tests {
             [upw!("ab"), upw!("b"), upw!("c")],
             [upw!("a")],
         );
+        let sample7 = OmegaSample::new_omega_from_pos_neg(
+            alphabet!(simple 'a', 'b'),
+            [upw!("a"), upw!("aab")],
+            [upw!("b"), upw!("abb")],
+        );
 
         assert_eq!(MinEvenParityCondition.consistent(&ts, &sample1), true);
         assert_eq!(MinEvenParityCondition.consistent(&ts2, &sample2), true);
@@ -589,6 +602,7 @@ mod tests {
         assert_eq!(MinEvenParityCondition.consistent(&ts3, &sample4), false);
         assert_eq!(MinEvenParityCondition.consistent(&ts4, &sample5), false);
         assert_eq!(MinEvenParityCondition.consistent(&ts4, &sample6), true);
+        assert_eq!(MinEvenParityCondition.consistent(&ts5, &sample7), true);
     }
 
     #[test]
@@ -605,12 +619,21 @@ mod tests {
             ])
             .default_color(Void)
             .into_dts_with_initial(0);
+        let ts2 = DTS::builder()
+            .with_transitions([(0, 'a', Void, 0), (0, 'b', Void, 1), (1, 'a', Void, 0)])
+            .default_color(Void)
+            .into_dts_with_initial(0);
 
         // build sample
         let sample = OmegaSample::new_omega_from_pos_neg(
             sigma(),
             [upw!("bbba"), upw!("ababbba")],
             [upw!("b"), upw!("babbba")],
+        );
+        let sample2 = OmegaSample::new_omega_from_pos_neg(
+            sigma(),
+            [upw!("a"), upw!("aab")],
+            [upw!("b"), upw!("abb")],
         );
 
         // build automaton
@@ -625,11 +648,23 @@ mod tests {
             ])
             .default_color(Void)
             .into_dpa(0);
+        let mut dpa2 = DTS::builder()
+            .with_transitions([
+                (0, 'a', 0, 0),
+                (0, 'b', 0, 1),
+                (1, 'a', 0, 0),
+                (1, 'b', 1, 2),
+                (2, 'a', 1, 2),
+                (2, 'b', 1, 2),
+            ])
+            .default_color(Void)
+            .into_dpa(0);
 
         let res = MinEvenParityCondition.consistent_automaton(&ts, &sample);
-        println!("{:?}", res);
-        println!("{:?}", dpa);
         assert_eq!(res, dpa);
+        // with completion via sink
+        let res2 = MinEvenParityCondition.consistent_automaton(&ts2, &sample2);
+        assert_eq!(res2, dpa2);
     }
 
     #[test]
@@ -649,7 +684,13 @@ mod tests {
             ])
             .default_color(Void)
             .into_dpa(0);
-        
-        assert_eq!(<MinEvenParityCondition as ConsistencyCheck<WithInitial<DTS>>>::default_automaton(&MinEvenParityCondition, &sample), dpa);
+
+        assert_eq!(
+            <MinEvenParityCondition as ConsistencyCheck<WithInitial<DTS>>>::default_automaton(
+                &MinEvenParityCondition,
+                &sample
+            ),
+            dpa
+        );
     }
 }
