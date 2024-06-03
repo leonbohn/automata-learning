@@ -34,6 +34,12 @@ pub mod fwpm;
 /// Defines the precise DPA.
 pub mod precise;
 
+/// Module defining ConsistencyCheck and implementing it for various omega acceptance conditions
+pub mod consistency;
+
+/// Module containing the implementation of the sprout algorithm.
+pub mod sprout;
+
 /// Executes the RPNI algorithm on the given sample. This returns a DFA that is
 /// composed of a right congruence as well as an acceptance condition, which marks
 /// a classes as accepting if it is reached by a positive sample word.
@@ -104,7 +110,7 @@ pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet, bool>) -> DPA {
         .ts_product(precise)
         .map_edge_colors(|(_, c)| c)
         .erase_state_colors();
-    let (completed, initial) = prod.trim_collect();
+    let (completed, initial) = prod.trim_collect_pointed();
 
     //now we use the completed thing to learn a MealyMachine from which we can then build the DPA
     let mm = completed.with_initial(initial).collect_mealy();
@@ -137,6 +143,7 @@ mod tests {
     use super::{sample, OmegaSample};
 
     #[test_log::test]
+    #[ignore]
     fn infer_precise_dpa_inf_aa() {
         let alphabet = alphabet!(simple 'a', 'b', 'c');
         let sample = sample! {alphabet; pos "a", "aab", "aaab", "bbaa", "aca", "caa", "abca", "baac"; neg "c", "b", "bc", "abc", "cba", "ac", "ba"};

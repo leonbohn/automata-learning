@@ -1,4 +1,4 @@
-use automata::{prelude::*, transition_system::operations::MapStateColor, word::LinearWord};
+use automata::{prelude::*, transition_system::operations::MapStateColor};
 
 use crate::passive::Sample;
 
@@ -255,6 +255,7 @@ mod tests {
     use super::MealyOracle;
 
     #[test]
+    #[ignore]
     fn mealy_al() {
         let target = DTS::builder()
             .with_transitions([

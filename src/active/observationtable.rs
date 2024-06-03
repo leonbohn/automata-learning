@@ -31,6 +31,15 @@ pub struct ObservationTable<S, X> {
     pub(crate) outputs: math::Map<Representative<S>, OutputRow<X>>,
 }
 
+impl<S, X> Default for ObservationTable<S, X>
+where
+    S: Hash + Eq,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<S, X> ObservationTable<S, X>
 where
     S: Hash + Eq,

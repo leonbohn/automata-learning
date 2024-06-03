@@ -76,17 +76,11 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
 
 #[cfg(test)]
 mod tests {
-    use automata::{
-        alphabet::CharAlphabet,
-        transition_system::{Deterministic, Dottable, Sproutable},
-        upw,
-        word::PeriodicOmegaWord,
-        TransitionSystem, Void,
-    };
-
     use super::prefix_tree;
+    use automata::prelude::*;
 
     #[test]
+    #[ignore]
     fn build_prefix_tree() {
         todo!()
         // let words = [upw!("aa"), upw!("aba"), upw!("bbaab"), upw!("bb")];
