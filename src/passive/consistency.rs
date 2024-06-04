@@ -225,20 +225,26 @@ where
             }
             (false, false) => {
                 // class of set of all transitions not clear, check both options
-                let path1 = zielonka_path(
+                let res1 = zielonka_path(
                     pos_sets.clone(),
                     neg_sets.clone(),
                     all_transitions.clone(),
                     false,
-                )
-                .unwrap();
-                let path2 = zielonka_path(pos_sets, neg_sets, all_transitions, true).unwrap();
-                // select smaller one
-                (z_path, lowest) = if path1.len() >= path2.len() {
-                    (path2, true)
-                } else {
-                    (path1, false)
-                };
+                );
+                let res2 = zielonka_path(pos_sets, neg_sets, all_transitions, true);
+                match (res1, res2) {
+                    (Some(path1), Some(path2)) => {
+                        // both work, select smaller one
+                        (z_path, lowest) = if path1.len() >= path2.len() {
+                            (path2, true)
+                        } else {
+                            (path1, false)
+                        };
+                    }
+                    (Some(path1), None) => (z_path, lowest) = (path1, false),
+                    (None, Some(path2)) => (z_path, lowest) = (path2, true),
+                    _ => panic!("No valid Zielonka Path exists. Not consistent."),
+                }
             }
             (true, true) => {
                 // this shouldn't happen, pos and neg induce same infinity set
