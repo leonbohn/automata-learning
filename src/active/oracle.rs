@@ -1,4 +1,4 @@
-use automata::{prelude::*, transition_system::operations::MapStateColor, word::LinearWord};
+use automata::{prelude::*, transition_system::operations::MapStateColor};
 
 use crate::passive::Sample;
 

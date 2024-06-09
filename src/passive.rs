@@ -110,7 +110,7 @@ pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet, bool>) -> DPA {
         .ts_product(precise)
         .map_edge_colors(|(_, c)| c)
         .erase_state_colors();
-    let (completed, initial) = prod.trim_collect();
+    let (completed, initial) = prod.trim_collect_pointed();
 
     //now we use the completed thing to learn a MealyMachine from which we can then build the DPA
     let mm = completed.with_initial(initial).collect_mealy();

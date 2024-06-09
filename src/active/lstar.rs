@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fmt::Debug};
 
-use automata::{prelude::*, word::Concat};
+use automata::prelude::*;
 use fixedbitset::FixedBitSet;
 use itertools::Itertools;
 use tracing::{debug, info, trace};

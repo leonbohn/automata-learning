@@ -1,4 +1,4 @@
-use automata::{alphabet::CharAlphabet, congruence::FORC};
+use automata::{prelude::*, congruence::FORC};
 use automata_learning::passive::OmegaSample;
 
 fn build_sample() -> OmegaSample<CharAlphabet, bool> {

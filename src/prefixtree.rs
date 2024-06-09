@@ -77,11 +77,8 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
 #[cfg(test)]
 mod tests {
     use automata::{
-        alphabet::CharAlphabet,
         transition_system::{Deterministic, Dottable, Sproutable},
-        upw,
-        word::PeriodicOmegaWord,
-        TransitionSystem, Void,
+        TransitionSystem
     };
 
     use super::prefix_tree;

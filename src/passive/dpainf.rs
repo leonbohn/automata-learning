@@ -376,8 +376,6 @@ where
 #[cfg(test)]
 pub(crate) mod tests {
     use automata::{
-        alphabet,
-        alphabet::CharAlphabet,
         congruence::FORC,
         prelude::*,
         transition_system::{Dottable, Sproutable},
