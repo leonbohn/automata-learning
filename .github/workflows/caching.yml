@@ -22,7 +22,7 @@ jobs:
             os: windows-latest
             target: x86_64-pc-windows-msvc
           - os_name: Linux-x86_64
-            os: ubuntu-latext
+            os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
           - os_name: macOS-x86_64
             os: macOS-latest
