@@ -16,17 +16,31 @@ use crate::prefixtree::prefix_tree;
 
 use super::OmegaSample;
 
+type EdgeSet = Set<(u32, char)>;
+
 /// Used to define consistency checks on various types of omega acceptance conditions
 /// required by the sprout algorithm for passively learning omega automata
 pub trait ConsistencyCheck<T> {
     /// the type of the automaton to be returned
     type Aut;
     /// Checks if the given transition system is consistent with the sample
-    fn consistent(&self, ts: &T, sample: &OmegaSample) -> bool;
+    fn consistent(
+        &self,
+        ts: &T,
+        sample: &OmegaSample,
+        pos_sets: Vec<EdgeSet>,
+        neg_sets: Vec<EdgeSet>,
+    ) -> (bool, Vec<EdgeSet>, Vec<EdgeSet>);
     /// If the transition system is consistent with the sample,
     /// returns an automaton with underlying transition system ts
     /// that is consistent with the sample
-    fn consistent_automaton(&self, ts: &T, sample: &OmegaSample) -> Self::Aut;
+    fn consistent_automaton(
+        &self,
+        ts: &T,
+        sample: &OmegaSample,
+        pos_sets: Vec<EdgeSet>,
+        neg_sets: Vec<EdgeSet>,
+    ) -> Self::Aut;
     /// Automaton that accepts precisely the positive example words
     /// in case no other solution can be found
     fn default_automaton(&self, sample: &OmegaSample) -> Self::Aut;
@@ -38,29 +52,62 @@ where
     <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
 {
     type Aut = DBA;
-    fn consistent(&self, ts: &T, sample: &OmegaSample) -> bool {
+    fn consistent(
+        &self,
+        ts: &T,
+        sample: &OmegaSample,
+        pos_sets: Vec<EdgeSet>,
+        neg_sets: Vec<EdgeSet>,
+    ) -> (bool, Vec<EdgeSet>, Vec<EdgeSet>) {
         if let Some([pos_successful, neg_successful]) = successful_runs(ts, sample) {
             // check if the infinity set of a positive word is subset of
             // the union of all infinity sets of negative words (see paper for details)
-            let neg_union: Set<_> = neg_successful
-                .into_iter()
-                .flat_map(|r| r.into_recurrent_transitions())
-                .collect();
 
-            pos_successful
-                .into_iter()
-                .map(|r| r.into_recurrent_transitions().collect::<Set<_>>())
-                .any(|s| s.is_subset(&neg_union))
-                .not()
+            let mut neg_sets_new: Vec<_> = neg_successful
+                .iter()
+                .map(|run| {
+                    run.recurrent_transitions()
+                        .map(|e| {
+                            let (src, &sym, _, _) = e.into_tuple();
+                            (src, sym)
+                        })
+                        .collect()
+                })
+                .collect();
+            neg_sets_new.extend(neg_sets);
+
+            let neg_union: EdgeSet = neg_sets_new.iter().flatten().cloned().collect();
+
+            let mut pos_sets_new: Vec<_> = pos_successful
+                .iter()
+                .map(|run| {
+                    run.recurrent_transitions()
+                        .map(|e| {
+                            let (src, &sym, _, _) = e.into_tuple();
+                            (src, sym)
+                        })
+                        .collect()
+                })
+                .collect();
+            pos_sets_new.extend(pos_sets);
+
+            let is_consistent = pos_sets_new.iter().any(|s| s.is_subset(&neg_union)).not();
+            (is_consistent, pos_sets_new, neg_sets_new)
         } else {
             // bad pair was found when runnning sample words on transition system
-            false
+            (false, pos_sets, neg_sets)
         }
     }
 
-    fn consistent_automaton(&self, ts: &T, sample: &OmegaSample) -> Self::Aut {
+    fn consistent_automaton(
+        &self,
+        ts: &T,
+        sample: &OmegaSample,
+        pos_sets: Vec<EdgeSet>,
+        neg_sets: Vec<EdgeSet>,
+    ) -> Self::Aut {
         // check consistency
-        assert!(self.consistent(ts, sample));
+        assert!(self.consistent(ts, sample, pos_sets, neg_sets).0);
 
         // derive acceptance condition: accepting transitions
         // -> all transitions besides the union of negative infinity sets
@@ -109,10 +156,16 @@ where
 {
     type Aut = DPA;
 
-    fn consistent(&self, ts: &T, sample: &OmegaSample) -> bool {
+    fn consistent(
+        &self,
+        ts: &T,
+        sample: &OmegaSample,
+        pos_sets: Vec<EdgeSet>,
+        neg_sets: Vec<EdgeSet>,
+    ) -> (bool, Vec<EdgeSet>, Vec<EdgeSet>) {
         if let Some([pos_successful, neg_successful]) = successful_runs(ts, sample) {
             // convert runs to infinity sets with elements of the form (source, symbol)
-            let pos_sets: Vec<Set<_>> = pos_successful
+            let mut pos_sets_new: Vec<EdgeSet> = pos_successful
                 .iter()
                 .map(|run| {
                     run.recurrent_transitions()
@@ -123,7 +176,8 @@ where
                         .collect()
                 })
                 .collect();
-            let neg_sets: Vec<Set<_>> = neg_successful
+            pos_sets_new.extend(pos_sets);
+            let mut neg_sets_new: Vec<EdgeSet> = neg_successful
                 .iter()
                 .map(|run| {
                     run.recurrent_transitions()
@@ -134,53 +188,57 @@ where
                         .collect()
                 })
                 .collect();
+            neg_sets_new.extend(neg_sets);
             // check how set with all transitions should be handled
-            let all_transitions: Set<_> = ts
+            let all_transitions: EdgeSet = ts
                 .state_indices()
                 .cartesian_product(ts.alphabet().universe())
                 .collect();
-            match (
-                pos_sets.contains(&all_transitions),
-                neg_sets.contains(&all_transitions),
+            let is_consistent = match (
+                pos_sets_new.contains(&all_transitions),
+                neg_sets_new.contains(&all_transitions),
             ) {
                 (true, false) => {
                     // set of all transitions is accepting
-                    has_zielonka_path(pos_sets, neg_sets, all_transitions, true)
+                    has_zielonka_path(&pos_sets_new, &neg_sets_new, &all_transitions, true)
                 }
                 (false, true) => {
                     // set of all transitions is non-accepting
-                    has_zielonka_path(pos_sets, neg_sets, all_transitions, false)
+                    has_zielonka_path(&pos_sets_new, &neg_sets_new, &all_transitions, false)
                 }
                 (false, false) => {
                     // class of set of all transitions not clear, check both options
-                    has_zielonka_path(
-                        pos_sets.clone(),
-                        neg_sets.clone(),
-                        all_transitions.clone(),
-                        false,
-                    ) || has_zielonka_path(pos_sets, neg_sets, all_transitions, true)
+                    has_zielonka_path(&pos_sets_new, &neg_sets_new, &all_transitions, false)
+                        || has_zielonka_path(&pos_sets_new, &neg_sets_new, &all_transitions, true)
                 }
                 (true, true) => {
                     // set of all transitions is both accepting and non-accepting
                     // no Zielonka path possible
                     false
                 }
-            }
+            };
+            (is_consistent, pos_sets_new, neg_sets_new)
         } else {
             // bad pair was found when running sample words on transition system
-            false
+            (false, pos_sets, neg_sets)
         }
     }
 
-    fn consistent_automaton(&self, ts: &T, sample: &OmegaSample) -> Self::Aut {
+    fn consistent_automaton(
+        &self,
+        ts: &T,
+        sample: &OmegaSample,
+        pos_sets: Vec<EdgeSet>,
+        neg_sets: Vec<EdgeSet>,
+    ) -> Self::Aut {
         // check consistency
-        assert!(self.consistent(ts, sample));
+        assert!(self.consistent(ts, sample, pos_sets, neg_sets).0);
 
         let [pos_successful, neg_successful] =
             successful_runs(ts, sample).expect("ts cannot be consistent with sample");
 
         // convert runs to infinity sets with elements of the form (source, symbol)
-        let pos_sets: Vec<Set<_>> = pos_successful
+        let pos_sets: Vec<EdgeSet> = pos_successful
             .iter()
             .map(|run| {
                 run.recurrent_transitions()
@@ -191,7 +249,7 @@ where
                     .collect()
             })
             .collect();
-        let neg_sets: Vec<Set<_>> = neg_successful
+        let neg_sets: Vec<EdgeSet> = neg_successful
             .iter()
             .map(|run| {
                 run.recurrent_transitions()
@@ -203,11 +261,11 @@ where
             })
             .collect();
 
-        let all_transitions: Set<_> = ts
+        let all_transitions: EdgeSet = ts
             .state_indices()
             .cartesian_product(ts.alphabet().universe())
             .collect();
-        let z_path: Vec<Set<(u32, char)>>;
+        let z_path: Vec<EdgeSet>;
         let lowest: bool;
         match (
             pos_sets.contains(&all_transitions),
@@ -290,22 +348,24 @@ where
 /// Check if it is possible to construct a valid zielonka path from the given classified sets.
 /// `class` is the classification to use for the set of all transitions.
 fn has_zielonka_path(
-    mut pos_sets: Vec<Set<(u32, char)>>,
-    mut neg_sets: Vec<Set<(u32, char)>>,
-    all_transitions: Set<(u32, char)>,
+    pos_sets: &Vec<EdgeSet>,
+    neg_sets: &Vec<EdgeSet>,
+    all_transitions: &EdgeSet,
     mut class: bool,
 ) -> bool {
     // check if class of set with all transitions is valid
     if class {
-        assert!(!neg_sets.contains(&all_transitions));
+        assert!(!neg_sets.contains(all_transitions));
     } else {
-        assert!(!pos_sets.contains(&all_transitions));
+        assert!(!pos_sets.contains(all_transitions));
     }
+    let mut pos_sets = pos_sets.to_owned();
+    let mut neg_sets = neg_sets.to_owned();
 
-    let mut z = all_transitions;
+    let mut z = all_transitions.clone();
     while !z.is_empty() {
         // set new Z to union of subsets with different classification
-        let z_new: Set<(u32, char)> = if class {
+        let z_new: EdgeSet = if class {
             // Z accepting
             neg_sets.retain(|s| s.is_subset(&z));
             neg_sets.iter().flatten().cloned().collect()
@@ -327,11 +387,11 @@ fn has_zielonka_path(
 /// `class` is the classification of the set of all transitions
 /// returns `None` if no consistent Zielonka path exists
 fn zielonka_path(
-    mut pos_sets: Vec<Set<(u32, char)>>,
-    mut neg_sets: Vec<Set<(u32, char)>>,
-    all_transitions: Set<(u32, char)>,
+    mut pos_sets: Vec<EdgeSet>,
+    mut neg_sets: Vec<EdgeSet>,
+    all_transitions: EdgeSet,
     mut class: bool,
-) -> Option<Vec<Set<(u32, char)>>> {
+) -> Option<Vec<EdgeSet>> {
     // check if class of set with all transitions is valid
     if class {
         assert!(!neg_sets.contains(&all_transitions));
@@ -343,7 +403,7 @@ fn zielonka_path(
     let mut i = 0;
     while !z_path[i].is_empty() {
         // set new Z to union of subsets with different classification
-        let z_new: Set<(u32, char)> = if class {
+        let z_new: EdgeSet = if class {
             // Z accepting
             neg_sets.retain(|s| s.is_subset(&z_path[i]));
             neg_sets.iter().flatten().cloned().collect()
@@ -431,14 +491,26 @@ mod tests {
         let sample3 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a", "b")], [upw!("b")]);
 
         // words escape from different states
-        assert!(BuchiCondition.consistent(&ts, &sample1));
-        assert!(MinEvenParityCondition.consistent(&ts, &sample1));
+        assert!(BuchiCondition.consistent(&ts, &sample1, vec![], vec![]).0);
+        assert!(
+            MinEvenParityCondition
+                .consistent(&ts, &sample1, vec![], vec![])
+                .0
+        );
         // words escape from same state but with different exit strings
-        assert!(BuchiCondition.consistent(&ts, &sample2));
-        assert!(MinEvenParityCondition.consistent(&ts, &sample2));
+        assert!(BuchiCondition.consistent(&ts, &sample2, vec![], vec![]).0);
+        assert!(
+            MinEvenParityCondition
+                .consistent(&ts, &sample2, vec![], vec![])
+                .0
+        );
         // words escape from same state with same exit string
-        assert!(!BuchiCondition.consistent(&ts2, &sample3));
-        assert!(!MinEvenParityCondition.consistent(&ts2, &sample3));
+        assert!(!BuchiCondition.consistent(&ts2, &sample3, vec![], vec![]).0);
+        assert!(
+            !MinEvenParityCondition
+                .consistent(&ts2, &sample3, vec![], vec![])
+                .0
+        );
     }
 
     #[test]
@@ -453,8 +525,12 @@ mod tests {
         let sample = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
 
         // one word is escaping, the other is not
-        assert!(BuchiCondition.consistent(&ts, &sample));
-        assert!(MinEvenParityCondition.consistent(&ts, &sample));
+        assert!(BuchiCondition.consistent(&ts, &sample, vec![], vec![]).0);
+        assert!(
+            MinEvenParityCondition
+                .consistent(&ts, &sample, vec![], vec![])
+                .0
+        );
     }
 
     #[test]
@@ -479,10 +555,10 @@ mod tests {
         let sample3 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("aab")], [upw!("b")]);
         let sample4 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
 
-        assert!(BuchiCondition.consistent(&ts, &sample1));
-        assert!(!BuchiCondition.consistent(&ts2, &sample2));
-        assert!(BuchiCondition.consistent(&ts2, &sample3));
-        assert!(BuchiCondition.consistent(&ts3, &sample4));
+        assert!(BuchiCondition.consistent(&ts, &sample1, vec![], vec![]).0);
+        assert!(!BuchiCondition.consistent(&ts2, &sample2, vec![], vec![]).0);
+        assert!(BuchiCondition.consistent(&ts2, &sample3, vec![], vec![]).0);
+        assert!(BuchiCondition.consistent(&ts3, &sample4, vec![], vec![]).0);
     }
 
     #[test]
@@ -509,7 +585,7 @@ mod tests {
             .default_color(Void)
             .into_dba(0);
 
-        let res = BuchiCondition.consistent_automaton(&ts, &sample);
+        let res = BuchiCondition.consistent_automaton(&ts, &sample, vec![], vec![]);
 
         assert_eq!(res, dba);
     }
@@ -574,14 +650,46 @@ mod tests {
             [upw!("b"), upw!("abb")],
         );
 
-        assert!(MinEvenParityCondition.consistent(&ts, &sample1));
-        assert!(MinEvenParityCondition.consistent(&ts2, &sample2));
-        assert!(!MinEvenParityCondition.consistent(&ts2, &sample3));
-        assert!(!MinEvenParityCondition.consistent(&ts2, &sample4));
-        assert!(!MinEvenParityCondition.consistent(&ts3, &sample4));
-        assert!(!MinEvenParityCondition.consistent(&ts4, &sample5));
-        assert!(MinEvenParityCondition.consistent(&ts4, &sample6));
-        assert!(MinEvenParityCondition.consistent(&ts5, &sample7));
+        assert!(
+            MinEvenParityCondition
+                .consistent(&ts, &sample1, vec![], vec![])
+                .0
+        );
+        assert!(
+            MinEvenParityCondition
+                .consistent(&ts2, &sample2, vec![], vec![])
+                .0
+        );
+        assert!(
+            !MinEvenParityCondition
+                .consistent(&ts2, &sample3, vec![], vec![])
+                .0
+        );
+        assert!(
+            !MinEvenParityCondition
+                .consistent(&ts2, &sample4, vec![], vec![])
+                .0
+        );
+        assert!(
+            !MinEvenParityCondition
+                .consistent(&ts3, &sample4, vec![], vec![])
+                .0
+        );
+        assert!(
+            !MinEvenParityCondition
+                .consistent(&ts4, &sample5, vec![], vec![])
+                .0
+        );
+        assert!(
+            MinEvenParityCondition
+                .consistent(&ts4, &sample6, vec![], vec![])
+                .0
+        );
+        assert!(
+            MinEvenParityCondition
+                .consistent(&ts5, &sample7, vec![], vec![])
+                .0
+        );
     }
 
     #[test]
@@ -639,10 +747,10 @@ mod tests {
             .default_color(Void)
             .into_dpa(0);
 
-        let res = MinEvenParityCondition.consistent_automaton(&ts, &sample);
+        let res = MinEvenParityCondition.consistent_automaton(&ts, &sample, vec![], vec![]);
         assert_eq!(res, dpa);
         // with completion via sink
-        let res2 = MinEvenParityCondition.consistent_automaton(&ts2, &sample2);
+        let res2 = MinEvenParityCondition.consistent_automaton(&ts2, &sample2, vec![], vec![]);
         assert_eq!(res2, dpa2);
     }
 

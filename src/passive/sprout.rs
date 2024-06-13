@@ -40,7 +40,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
             // try adding transition
             ts.add_edge((source, a, Void, q));
             // continue if consistent
-            if acc_type.consistent(&ts, &sample) {
+            if acc_type.consistent(&ts, &sample, vec![], vec![]).0 {
                 continue 'outer;
             } else {
                 ts.remove_edges_from_matching(source, a);
@@ -50,7 +50,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
         let new_state = ts.add_state(Void);
         ts.add_edge((source, a, Void, new_state));
     }
-    acc_type.consistent_automaton(&ts, &sample)
+    acc_type.consistent_automaton(&ts, &sample, vec![], vec![])
 }
 
 /// sort a vector of Strings length lexicographically
