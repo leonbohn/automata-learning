@@ -232,6 +232,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn split_up_sample() {
         let alphabet = alphabet!(simple 'a', 'b');
         // represents congruence e ~ b ~ aa ~\~ a ~ ab

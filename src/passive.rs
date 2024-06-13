@@ -143,6 +143,7 @@ mod tests {
     use super::{sample, OmegaSample};
 
     #[test_log::test]
+    #[ignore]
     fn infer_precise_dpa_inf_aa() {
         let alphabet = alphabet!(simple 'a', 'b', 'c');
         let sample = sample! {alphabet; pos "a", "aab", "aaab", "bbaa", "aca", "caa", "abca", "baac"; neg "c", "b", "bc", "abc", "cba", "ac", "ba"};

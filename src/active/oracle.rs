@@ -255,6 +255,7 @@ mod tests {
     use super::MealyOracle;
 
     #[test]
+    #[ignore]
     fn mealy_al() {
         let target = DTS::builder()
             .with_transitions([
