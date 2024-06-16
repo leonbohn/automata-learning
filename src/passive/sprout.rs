@@ -10,10 +10,6 @@ use super::{consistency::ConsistencyCheck, OmegaSample};
 /// implements the sprout passive learning algorithm for omega automata from <https://arxiv.org/pdf/2108.03735.pdf>
 pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_type: A) -> A::Aut {
     // make ts with initial state
-    // let mut temp_ts = DTS::for_alphabet(sample.alphabet().clone())
-    // temp_ts.add_state(Void);
-    // let mut ts = temp_ts.with_initial(0);
-
     let mut ts = Automaton::new_with_initial_color(sample.alphabet().clone(), Void);
 
     // compute threshold
@@ -24,8 +20,12 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
     let thresh = (lb + le.pow(2) + 1) as isize;
 
     // while there are positive sample words that are escaping
+    let mut pos_sets = vec![];
+    let mut neg_sets = vec![];
+    let mut mut_sample = sample.clone();
     'outer: while let Some(escape_prefix) =
-        length_lexicographical_sort(ts.escape_prefixes(sample.positive_words()).collect()).first()
+        length_lexicographical_sort(ts.escape_prefixes(mut_sample.positive_words()).collect())
+            .first()
     {
         let u = escape_prefix[..escape_prefix.len() - 1].to_string();
         let a = escape_prefix.chars().last().expect("empty escape prefix");
@@ -40,7 +40,13 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
             // try adding transition
             ts.add_edge((source, a, Void, q));
             // continue if consistent
-            if acc_type.consistent(&ts, &sample, vec![], vec![]).0 {
+            let (is_consistent, pos_sets_new, neg_sets_new) =
+                acc_type.consistent(&ts, &sample, pos_sets.clone(), neg_sets.clone());
+            if is_consistent {
+                // update already known infinity sets
+                pos_sets = pos_sets_new;
+                neg_sets = neg_sets_new;
+                mut_sample.remove_non_escaping(&ts);
                 continue 'outer;
             } else {
                 ts.remove_edges_from_matching(source, a);
@@ -50,7 +56,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
         let new_state = ts.add_state(Void);
         ts.add_edge((source, a, Void, new_state));
     }
-    acc_type.consistent_automaton(&ts, &sample, vec![], vec![])
+    acc_type.consistent_automaton(&ts, &mut_sample, pos_sets, neg_sets)
 }
 
 /// sort a vector of Strings length lexicographically
@@ -67,6 +73,41 @@ pub fn length_lexicographical_sort(mut words: Vec<String>) -> Vec<String> {
         }
     });
     words
+}
+
+impl OmegaSample {
+    /// Remove all words from the sample that are not escaping in the given transition system
+    pub fn remove_non_escaping<T>(&mut self, ts: &T)
+    where
+        T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
+        // <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
+    {
+        // run transition system on sample words and
+        // separate in escaping and non-escaping (successful) runs
+        let pos_successful: Vec<_> = self
+            .positive_words()
+            .filter_map(|word| match ts.omega_run(&word) {
+                Ok(_) => Some(word),
+                Err(_) => None,
+            })
+            .cloned()
+            .collect();
+        for w in pos_successful {
+            self.remove(&w)
+        }
+
+        let neg_successful: Vec<_> = self
+            .negative_words()
+            .filter_map(|word| match ts.omega_run(&word) {
+                Ok(_) => Some(word),
+                Err(_) => None,
+            })
+            .cloned()
+            .collect();
+        for w in neg_successful {
+            self.remove(&w)
+        }
+    }
 }
 
 #[cfg(test)]
