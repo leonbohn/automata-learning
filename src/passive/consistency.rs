@@ -59,36 +59,11 @@ where
         pos_sets: Vec<EdgeSet>,
         neg_sets: Vec<EdgeSet>,
     ) -> (bool, Vec<EdgeSet>, Vec<EdgeSet>) {
-        if let Some([pos_successful, neg_successful]) = successful_runs(ts, sample) {
+        if let Some([mut pos_sets_new, mut neg_sets_new]) = to_infinity_sets(ts, sample) {
             // check if the infinity set of a positive word is subset of
             // the union of all infinity sets of negative words (see paper for details)
-
-            let mut neg_sets_new: Vec<_> = neg_successful
-                .iter()
-                .map(|run| {
-                    run.recurrent_transitions()
-                        .map(|e| {
-                            let (src, &sym, _, _) = e.into_tuple();
-                            (src, sym)
-                        })
-                        .collect()
-                })
-                .collect();
             neg_sets_new.extend(neg_sets);
-
             let neg_union: EdgeSet = neg_sets_new.iter().flatten().cloned().collect();
-
-            let mut pos_sets_new: Vec<_> = pos_successful
-                .iter()
-                .map(|run| {
-                    run.recurrent_transitions()
-                        .map(|e| {
-                            let (src, &sym, _, _) = e.into_tuple();
-                            (src, sym)
-                        })
-                        .collect()
-                })
-                .collect();
             pos_sets_new.extend(pos_sets);
 
             let is_consistent = pos_sets_new.iter().any(|s| s.is_subset(&neg_union)).not();
@@ -111,20 +86,8 @@ where
 
         // derive acceptance condition: accepting transitions
         // -> all transitions besides the union of negative infinity sets
-        let [_, neg_successful] =
-            successful_runs(ts, sample).expect("ts cannot be consistent with sample");
-
-        let mut neg_sets_new: Vec<_> = neg_successful
-            .iter()
-            .map(|run| {
-                run.recurrent_transitions()
-                    .map(|e| {
-                        let (src, &sym, _, _) = e.into_tuple();
-                        (src, sym)
-                    })
-                    .collect()
-            })
-            .collect();
+        let [_, mut neg_sets_new] =
+            to_infinity_sets(ts, sample).expect("ts cannot be consistent with sample");
         neg_sets_new.extend(neg_sets);
 
         let neg_union: EdgeSet = neg_sets_new.iter().flatten().cloned().collect();
@@ -172,31 +135,8 @@ where
         pos_sets: Vec<EdgeSet>,
         neg_sets: Vec<EdgeSet>,
     ) -> (bool, Vec<EdgeSet>, Vec<EdgeSet>) {
-        if let Some([pos_successful, neg_successful]) = successful_runs(ts, sample) {
-            // convert runs to infinity sets with elements of the form (source, symbol)
-            let mut pos_sets_new: Vec<EdgeSet> = pos_successful
-                .iter()
-                .map(|run| {
-                    run.recurrent_transitions()
-                        .map(|e| {
-                            let (src, &sym, _, _) = e.into_tuple();
-                            (src, sym)
-                        })
-                        .collect()
-                })
-                .collect();
+        if let Some([mut pos_sets_new, mut neg_sets_new]) = to_infinity_sets(ts, sample) {
             pos_sets_new.extend(pos_sets);
-            let mut neg_sets_new: Vec<EdgeSet> = neg_successful
-                .iter()
-                .map(|run| {
-                    run.recurrent_transitions()
-                        .map(|e| {
-                            let (src, &sym, _, _) = e.into_tuple();
-                            (src, sym)
-                        })
-                        .collect()
-                })
-                .collect();
             neg_sets_new.extend(neg_sets);
             // check how set with all transitions should be handled
             let all_transitions: EdgeSet = ts
@@ -246,34 +186,10 @@ where
                 .0
         );
 
-        let [pos_successful, neg_successful] =
-            successful_runs(ts, sample).expect("ts cannot be consistent with sample");
+        let [mut pos_sets_new, mut neg_sets_new] =
+            to_infinity_sets(ts, sample).expect("ts cannot be consistent with sample");
 
-        // convert runs to infinity sets with elements of the form (source, symbol)
-        let mut pos_sets_new: Vec<EdgeSet> = pos_successful
-            .iter()
-            .map(|run| {
-                run.recurrent_transitions()
-                    .map(|e| {
-                        let (src, &sym, _, _) = e.into_tuple();
-                        (src, sym)
-                    })
-                    .collect()
-            })
-            .collect();
         pos_sets_new.extend(pos_sets);
-
-        let mut neg_sets_new: Vec<EdgeSet> = neg_successful
-            .iter()
-            .map(|run| {
-                run.recurrent_transitions()
-                    .map(|e| {
-                        let (src, &sym, _, _) = e.into_tuple();
-                        (src, sym)
-                    })
-                    .collect()
-            })
-            .collect();
         neg_sets_new.extend(neg_sets);
 
         let all_transitions: EdgeSet = ts
@@ -472,6 +388,44 @@ where
         }
     }
     Some([pos_successful, neg_successful])
+}
+
+/// Run positive and negative sample words on the given transition system.
+/// If there is a pair of words escaping with the same escape string from the same state, return None.
+/// Otherwise return vector of sets of transitions visited infinitely often
+/// during the runs of positive and negative example words.
+fn to_infinity_sets<T>(ts: T, sample: &OmegaSample) -> Option<[Vec<EdgeSet>; 2]>
+where
+    T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
+    <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
+{
+    if let Some([pos_successful, neg_successful]) = successful_runs(ts, sample) {
+        let pos_sets = pos_successful
+            .iter()
+            .map(|run| {
+                run.recurrent_transitions()
+                    .map(|e| {
+                        let (src, &sym, _, _) = e.into_tuple();
+                        (src, sym)
+                    })
+                    .collect()
+            })
+            .collect();
+        let neg_sets = neg_successful
+            .iter()
+            .map(|run| {
+                run.recurrent_transitions()
+                    .map(|e| {
+                        let (src, &sym, _, _) = e.into_tuple();
+                        (src, sym)
+                    })
+                    .collect()
+            })
+            .collect();
+        Some([pos_sets, neg_sets])
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
