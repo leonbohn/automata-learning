@@ -402,11 +402,6 @@ mod tests {
         prelude::*,
     };
 
-    // default alphabet
-    fn sigma() -> CharAlphabet {
-        alphabet!(simple 'a', 'b')
-    }
-
     #[test]
     fn both_escaping() {
         // build transition systems
@@ -420,9 +415,18 @@ mod tests {
             .into_dts_with_initial(0);
 
         // build samples
-        let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
-        let sample2 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("a", "b")]);
-        let sample3 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a", "b")], [upw!("b")]);
+        let sample1 =
+            OmegaSample::new_omega_from_pos_neg(CharAlphabet::of_size(2), [upw!("a")], [upw!("b")]);
+        let sample2 = OmegaSample::new_omega_from_pos_neg(
+            CharAlphabet::of_size(2),
+            [upw!("a")],
+            [upw!("a", "b")],
+        );
+        let sample3 = OmegaSample::new_omega_from_pos_neg(
+            CharAlphabet::of_size(2),
+            [upw!("a", "b")],
+            [upw!("b")],
+        );
 
         // words escape from different states
         assert!(BuchiCondition.consistent(&ts, &sample1));
@@ -444,7 +448,8 @@ mod tests {
             .into_dts_with_initial(0);
 
         // build sample
-        let sample = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
+        let sample =
+            OmegaSample::new_omega_from_pos_neg(CharAlphabet::of_size(2), [upw!("a")], [upw!("b")]);
 
         // one word is escaping, the other is not
         assert!(BuchiCondition.consistent(&ts, &sample));
@@ -468,10 +473,23 @@ mod tests {
             .into_dts_with_initial(0);
 
         // build samples
-        let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a", "b")], [upw!("b")]);
-        let sample2 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("b")], [upw!("aab")]);
-        let sample3 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("aab")], [upw!("b")]);
-        let sample4 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
+        let sample1 = OmegaSample::new_omega_from_pos_neg(
+            CharAlphabet::of_size(2),
+            [upw!("a", "b")],
+            [upw!("b")],
+        );
+        let sample2 = OmegaSample::new_omega_from_pos_neg(
+            CharAlphabet::of_size(2),
+            [upw!("b")],
+            [upw!("aab")],
+        );
+        let sample3 = OmegaSample::new_omega_from_pos_neg(
+            CharAlphabet::of_size(2),
+            [upw!("aab")],
+            [upw!("b")],
+        );
+        let sample4 =
+            OmegaSample::new_omega_from_pos_neg(CharAlphabet::of_size(2), [upw!("a")], [upw!("b")]);
 
         assert!(BuchiCondition.consistent(&ts, &sample1));
         assert!(!BuchiCondition.consistent(&ts2, &sample2));
@@ -488,7 +506,11 @@ mod tests {
             .into_dts_with_initial(0);
 
         // build sample
-        let sample = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a", "b")], [upw!("b")]);
+        let sample = OmegaSample::new_omega_from_pos_neg(
+            CharAlphabet::of_size(2),
+            [upw!("a", "b")],
+            [upw!("b")],
+        );
 
         // build automaton
         let dba = DTS::builder()
@@ -543,27 +565,35 @@ mod tests {
             .into_dts_with_initial(0);
 
         // build samples
-        let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
-        let sample2 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("ab")]);
-        let sample3 =
-            OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a"), upw!("b")], [upw!("ab")]);
+        let sample1 =
+            OmegaSample::new_omega_from_pos_neg(CharAlphabet::of_size(2), [upw!("a")], [upw!("b")]);
+        let sample2 = OmegaSample::new_omega_from_pos_neg(
+            CharAlphabet::of_size(2),
+            [upw!("a")],
+            [upw!("ab")],
+        );
+        let sample3 = OmegaSample::new_omega_from_pos_neg(
+            CharAlphabet::of_size(2),
+            [upw!("a"), upw!("b")],
+            [upw!("ab")],
+        );
         let sample4 = OmegaSample::new_omega_from_pos_neg(
-            sigma(),
+            CharAlphabet::of_size(2),
             [upw!("ababb")],
             [upw!("ba"), upw!("bba")],
         );
         let sample5 = OmegaSample::new_omega_from_pos_neg(
-            alphabet!(simple 'a', 'b', 'c'),
+            CharAlphabet::of_size(3),
             [upw!("a"), upw!("b"), upw!("c")],
             [upw!("ab")],
         );
         let sample6 = OmegaSample::new_omega_from_pos_neg(
-            alphabet!(simple 'a', 'b', 'c'),
+            CharAlphabet::of_size(3),
             [upw!("ab"), upw!("b"), upw!("c")],
             [upw!("a")],
         );
         let sample7 = OmegaSample::new_omega_from_pos_neg(
-            alphabet!(simple 'a', 'b'),
+            CharAlphabet::of_size(2),
             [upw!("a"), upw!("aab")],
             [upw!("b"), upw!("abb")],
         );
@@ -599,12 +629,12 @@ mod tests {
 
         // build sample
         let sample = OmegaSample::new_omega_from_pos_neg(
-            sigma(),
+            CharAlphabet::of_size(2),
             [upw!("bbba"), upw!("ababbba")],
             [upw!("b"), upw!("babbba")],
         );
         let sample2 = OmegaSample::new_omega_from_pos_neg(
-            sigma(),
+            CharAlphabet::of_size(2),
             [upw!("a"), upw!("aab")],
             [upw!("b"), upw!("abb")],
         );
@@ -642,7 +672,11 @@ mod tests {
 
     #[test]
     fn parity_default_automaton() {
-        let sample = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("abb")], [upw!("ab")]);
+        let sample = OmegaSample::new_omega_from_pos_neg(
+            CharAlphabet::of_size(2),
+            [upw!("abb")],
+            [upw!("ab")],
+        );
 
         let dpa = DTS::builder()
             .with_transitions([

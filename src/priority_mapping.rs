@@ -1,26 +1,26 @@
 use std::fmt::Debug;
 
+use dag::Dag;
 use impl_tools::autoimpl;
 use owo_colors::OwoColorize;
 
 use automata::{
-    dag::Dag,
     prelude::*,
     transition_system::dot::{DotStateAttribute, Dottable},
 };
 
 /// A priority mapping is essentially a [`crate::MealyMachine`], i.e. it reads
 /// finite words and ouptuts a priority (which in this case is a `usize`).
-pub type PriorityMapping<A = CharAlphabet> = MealyMachine<A, Int>;
+pub type Family<A = CharAlphabet> = MealyMachine<A>;
 
 #[derive(Clone)]
-pub struct CongruentPriorityMapping<'ts, A: Alphabet> {
+pub struct SubMapping<'ts, A: Alphabet> {
     ts: &'ts RightCongruence<A>,
     class: StateIndex,
     mm: MealyMachine<A>,
 }
 
-impl<'ts, A: Alphabet> CongruentPriorityMapping<'ts, A> {
+impl<'ts, A: Alphabet> SubMapping<'ts, A> {
     pub fn new(ts: &'ts RightCongruence<A>, class: StateIndex, mm: MealyMachine<A>) -> Self {
         Self { ts, class, mm }
     }
@@ -216,7 +216,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
 #[derive(Clone)]
 pub struct Fwpm<A: Alphabet = CharAlphabet> {
     cong: RightCongruence<A>,
-    pms: Vec<PriorityMapping<A>>,
+    pms: Vec<Family<A>>,
 }
 
 impl<A: Alphabet> Fwpm<A> {}

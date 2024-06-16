@@ -466,7 +466,7 @@ pub(crate) mod tests {
     }
 
     fn testing_smaller_forc_smaple() -> (CharAlphabet, OmegaSample<CharAlphabet, bool>) {
-        let alphabet = alphabet!(simple 'a', 'b', 'c');
+        let alphabet = CharAlphabet::of_size(3);
         (
             alphabet.clone(),
             Sample::new_omega_from_pos_neg(
@@ -544,7 +544,7 @@ pub(crate) mod tests {
 
     // #[test]
     // fn prefix_consistency_sprout_two() {
-    //     let alphabet = alphabet!(simple 'a', 'b');
+    //     let alphabet = CharAlphabet::of_size(2);
     //     let sample = Sample::new_omega(
     //         alphabet.clone(),
     //         vec![
@@ -554,7 +554,7 @@ pub(crate) mod tests {
     //         ],
     //     );
     //     let mut expected_cong: RightCongruence<CharAlphabet, Void, Void> =
-    //         RightCongruence::new(alphabet!(simple 'a', 'b'));
+    //         RightCongruence::new(CharAlphabet::of_size(2));
     //     let q0 = expected_cong.add_state(vec![]);
     //     let q1 = expected_cong.add_state(vec!['b']);
     //     expected_cong.add_edge(q0, 'b', q1, ());
@@ -580,7 +580,7 @@ pub(crate) mod tests {
 
     // #[test]
     // fn prefix_consistency_sprout_one() {
-    //     let alphabet = alphabet!(simple 'a', 'b');
+    //     let alphabet = CharAlphabet::of_size(2);
     //     let sample = Sample::new_omega(
     //         alphabet.clone(),
     //         vec![(upw!("a"), false), (upw!("b"), true)],
@@ -594,7 +594,7 @@ pub(crate) mod tests {
 
     // #[test]
     // fn prefix_consistency_sprout_four() {
-    //     let alphabet = alphabet!(simple 'a', 'b');
+    //     let alphabet = CharAlphabet::of_size(2);
     //     let sample = Sample::new_omega(
     //         alphabet.clone(),
     //         vec![

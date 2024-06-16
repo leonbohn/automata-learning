@@ -108,7 +108,7 @@ impl<A: Alphabet, W: FiniteWord<A::Symbol>, C: Color> From<(Sample<A, W, C>, C)>
     }
 }
 
-/// An oracle base on a [`DFALike`] instance. It answers membership queries by running the word through the
+/// An oracle base on a [`DFA`] instance. It answers membership queries by running the word through the
 /// automaton and returning the result. Equivalence queries are performed by intersecting the hypothesis with
 /// the negated input automaton and returning a counterexample if the intersection is non-empty.
 #[derive(Debug, Clone)]
@@ -190,7 +190,7 @@ where
     D: Congruence,
     EdgeColor<D>: Color,
 {
-    /// Creates a new [`MealyOracle`] based on an instance of [`MealyLike`].
+    /// Creates a new [`MealyOracle`] based on an instance of [`MealyMachine`].
     pub fn new(automaton: D, default: Option<D::EdgeColor>) -> Self {
         Self {
             automaton: automaton.into_mealy(),
@@ -240,7 +240,7 @@ where
     D: Congruence,
     EdgeColor<D>: Color,
 {
-    /// Creates a new [`MooreOracle`] based on an instance of [`MooreLike`].
+    /// Creates a new [`MooreOracle`] based on an instance of something that behaves like a [`MooreMachine`].
     pub fn new(automaton: D) -> Self {
         Self { automaton }
     }

@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn sprout_buchi() {
-        let sigma = alphabet!(simple 'a', 'b');
+        let sigma = CharAlphabet::of_size(2);
 
         // build sample
         let sample =
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn sprout_buchi_thresh() {
-        let sigma = alphabet!(simple 'a', 'b');
+        let sigma = CharAlphabet::of_size(2);
 
         // build sample
         let sample = OmegaSample::new_omega_from_pos_neg(
@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn sprout_parity() {
-        let sigma = alphabet!(simple 'a', 'b');
+        let sigma = CharAlphabet::of_size(2);
 
         // build sample
         let sample = OmegaSample::new_omega_from_pos_neg(
@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn sprout_parity_thresh() {
-        let sigma = alphabet!(simple 'a', 'b');
+        let sigma = CharAlphabet::of_size(2);
 
         // build sample
         let sample = OmegaSample::new_omega_from_pos_neg(
