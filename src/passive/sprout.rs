@@ -1,4 +1,5 @@
 use automata::{math::Set, prelude::*, transition_system::path};
+use itertools::Itertools;
 
 use std::{collections::HashSet, path::Iter};
 
@@ -18,6 +19,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
         .map(|w| (w.spoke().len(), w.cycle().len()))
         .fold((0, 0), |(a0, a1), (b0, b1)| (a0.max(b0), a1.max(b1)));
     let thresh = (lb + le.pow(2) + 1) as isize;
+    println!("threshold: {}", thresh);
 
     // while there are positive sample words that are escaping
     let mut pos_sets = vec![];
@@ -34,19 +36,23 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
             // compute default automaton
             return acc_type.default_automaton(&sample);
         }
+        // dbg!(u.len());
         let source = ts.finite_run(u).unwrap().reached();
-
         for q in ts.state_indices_vec() {
             // try adding transition
             ts.add_edge((source, a, Void, q));
             // continue if consistent
             let (is_consistent, pos_sets_new, neg_sets_new) =
-                acc_type.consistent(&ts, &sample, pos_sets.clone(), neg_sets.clone());
+                acc_type.consistent(&ts, &mut_sample, pos_sets.clone(), neg_sets.clone());
             if is_consistent {
                 // update already known infinity sets
                 pos_sets = pos_sets_new;
                 neg_sets = neg_sets_new;
                 mut_sample.remove_non_escaping(&ts);
+                // dbg!(ts.size());
+                // dbg!(pos_sets.len());
+                // dbg!(neg_sets.len());
+                // dbg!(mut_sample.words.len());
                 continue 'outer;
             } else {
                 ts.remove_edges_from_matching(source, a);
@@ -93,7 +99,7 @@ impl OmegaSample {
             .cloned()
             .collect();
         for w in pos_successful {
-            self.remove(&w)
+            self.remove(&w);
         }
 
         let neg_successful: Vec<_> = self
@@ -105,7 +111,7 @@ impl OmegaSample {
             .cloned()
             .collect();
         for w in neg_successful {
-            self.remove(&w)
+            self.remove(&w);
         }
     }
 }

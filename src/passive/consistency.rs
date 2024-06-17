@@ -3,14 +3,7 @@ use std::collections::HashMap;
 use std::iter;
 use std::ops::Not;
 
-use automata::{
-    math::Set,
-    prelude::*,
-    transition_system::{
-        path::{Lasso, LassoIn},
-        Edge,
-    },
-};
+use automata::{math::Set, prelude::*, transition_system::path::{self, LassoIn}};
 
 use crate::prefixtree::prefix_tree;
 
@@ -368,23 +361,37 @@ where
         .map(|w| (ts.omega_run(w), w))
         .partition_map(|r| match r {
             (Ok(v), _) => Either::Left(v),
-            (Err(v), w) => Either::Right((v, w)),
+            (Err(path), w) => {
+                let reached = path.reached();
+                let escape_str = w.skip(path.len());
+                Either::Right((reached, escape_str))
+            },
         });
     let (neg_successful, neg_escaping): (Vec<_>, Vec<_>) = sample
         .negative_words()
         .map(|w| (ts.omega_run(w), w))
         .partition_map(|r| match r {
             (Ok(v), _) => Either::Left(v),
-            (Err(v), w) => Either::Right((v, w)),
+            (Err(path), w) => {
+                let reached = path.reached();
+                let escape_str = w.skip(path.len());
+                Either::Right((reached, escape_str))
+            },
         });
-
     // reject if a pair escaping from the same state with the same escape string is found
-    for ((pos_path, w0), (neg_path, w1)) in pos_escaping.into_iter().cartesian_product(neg_escaping)
-    {
-        let pos_esc_str = w0.skip(pos_path.len());
-        let neg_esc_str = w1.skip(neg_path.len());
-        if pos_path.reached() == neg_path.reached() && pos_esc_str.equals(neg_esc_str) {
-            return None;
+    // for ((pos_reached, pos_esc_str), (neg_reached, neg_esc_str)) in pos_escaping.into_iter().cartesian_product(neg_escaping)
+    // {
+    //     // let pos_esc_str = w0.skip(pos_path.len());
+    //     // let neg_esc_str = w1.skip(neg_path.len());
+    //     if pos_reached == neg_reached && pos_esc_str.equals(neg_esc_str) {
+    //         return None;
+    //     }
+    // }
+    for (pos_reached, pos_esc_str) in pos_escaping {
+        for (neg_reached, neg_esc_str) in &neg_escaping {
+            if pos_reached == *neg_reached && pos_esc_str.equals(neg_esc_str) {
+                return None;
+            }
         }
     }
     Some([pos_successful, neg_successful])
@@ -401,9 +408,9 @@ where
 {
     if let Some([pos_successful, neg_successful]) = successful_runs(ts, sample) {
         let pos_sets = pos_successful
-            .iter()
+            .into_iter()
             .map(|run| {
-                run.recurrent_transitions()
+                run.into_recurrent_transitions()
                     .map(|e| {
                         let (src, &sym, _, _) = e.into_tuple();
                         (src, sym)
@@ -412,9 +419,9 @@ where
             })
             .collect();
         let neg_sets = neg_successful
-            .iter()
+            .into_iter()
             .map(|run| {
-                run.recurrent_transitions()
+                run.into_recurrent_transitions()
                     .map(|e| {
                         let (src, &sym, _, _) = e.into_tuple();
                         (src, sym)
