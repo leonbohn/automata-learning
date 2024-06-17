@@ -44,7 +44,7 @@ impl<A: Alphabet> OmegaSample<A> {
     pub fn prefix_tree(&self) -> RightCongruence<A> {
         prefix_tree(self.alphabet().clone(), self.words())
             .erase_state_colors()
-            .collect_right_congruence()
+            .into_right_congruence()
     }
 }
 
@@ -277,7 +277,7 @@ mod tests {
             time_start.elapsed().as_micros()
         );
 
-        let dfa = cong.map_state_colors(|_| true).collect_dfa();
+        let dfa = cong.map_state_colors(|_| true).into_dfa();
         for prf in ["aba", "ababbbbbb", "", "aa", "b", "bbabbab"] {
             assert!(dfa.accepts(prf));
         }

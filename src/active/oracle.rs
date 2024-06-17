@@ -134,7 +134,7 @@ impl<A: Alphabet> Oracle for DFAOracle<A> {
     }
 
     fn output<W: FiniteWord<A::Symbol>>(&self, word: W) -> bool {
-        (&self.automaton).into_dfa().accepts(word)
+        self.automaton.accepts(word)
     }
 
     fn equivalence<H>(
@@ -150,20 +150,16 @@ impl<A: Alphabet> Oracle for DFAOracle<A> {
 
 /// An oracle based on a [`MealyMachine`].
 #[derive(Clone)]
-pub struct MealyOracle<D: Congruence> {
-    automaton: IntoMealyMachine<D>,
-    default: Option<D::EdgeColor>,
+pub struct MealyOracle<A: Alphabet, C: Color = Int> {
+    automaton: MealyMachine<A, Void, C>,
+    default: Option<C>,
 }
 
-impl<D> Oracle for MealyOracle<D>
-where
-    D: Congruence<Alphabet = CharAlphabet>,
-    EdgeColor<D>: Color + Default,
-{
-    type Alphabet = D::Alphabet;
-    type Output = EdgeColor<D>;
+impl<A: Alphabet, C: Color> Oracle for MealyOracle<A, C> {
+    type Alphabet = A;
+    type Output = C;
 
-    fn output<W: FiniteWord<SymbolOf<D>>>(&self, word: W) -> D::EdgeColor {
+    fn output<W: FiniteWord<A::Symbol>>(&self, word: W) -> C {
         self.automaton
             .map(word)
             .or(self.default.clone())
@@ -180,25 +176,24 @@ where
         todo!()
     }
 
-    fn alphabet(&self) -> &CharAlphabet {
+    fn alphabet(&self) -> &A {
         self.automaton.alphabet()
     }
 }
 
-impl<D> MealyOracle<D>
-where
-    D: Congruence,
-    EdgeColor<D>: Color,
-{
+impl<A: Alphabet, C: Color> MealyOracle<A, C> {
     /// Creates a new [`MealyOracle`] based on an instance of [`MealyMachine`].
-    pub fn new(automaton: D, default: Option<D::EdgeColor>) -> Self {
+    pub fn new(
+        automaton: impl Congruence<Alphabet = A, EdgeColor = C>,
+        default: Option<C>,
+    ) -> Self {
         Self {
-            automaton: automaton.into_mealy(),
+            automaton: automaton.erase_state_colors().collect_mealy(),
             default,
         }
     }
 
-    pub fn alphabet(&self) -> &D::Alphabet {
+    pub fn alphabet(&self) -> &A {
         self.automaton.alphabet()
     }
 }

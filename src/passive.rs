@@ -56,7 +56,7 @@ pub fn dfa_rpni<A: Alphabet>(sample: &FiniteSample<A, bool>) -> DFA<A> {
         })
         .collect();
     cong.with_state_color(DefaultIfMissing::new(accepting, false))
-        .collect_dfa()
+        .into_dfa()
 }
 
 /// Executes a variant of the RPNI algorithm for omega-words, producing a DBA.

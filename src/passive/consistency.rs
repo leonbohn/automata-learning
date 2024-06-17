@@ -96,7 +96,7 @@ where
             .map_edge_colors(|_| true)
             .erase_state_colors()
             .with_initial(0)
-            .collect_dba();
+            .into_dba();
         dba.complete_with_colors(Void, false);
         dba
     }
@@ -275,7 +275,7 @@ where
             .map_edge_colors(|_| 0)
             .erase_state_colors()
             .with_initial(0)
-            .collect_dpa();
+            .into_dpa();
         dpa.complete_with_colors(Void, 1);
         dpa
     }
