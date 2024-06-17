@@ -36,7 +36,6 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
             // compute default automaton
             return acc_type.default_automaton(&sample);
         }
-        // dbg!(u.len());
         let source = ts.finite_run(u).unwrap().reached();
         for q in ts.state_indices_vec() {
             // try adding transition
@@ -49,10 +48,6 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
                 pos_sets = pos_sets_new;
                 neg_sets = neg_sets_new;
                 mut_sample.remove_non_escaping(&ts);
-                // dbg!(ts.size());
-                // dbg!(pos_sets.len());
-                // dbg!(neg_sets.len());
-                // dbg!(mut_sample.words.len());
                 continue 'outer;
             } else {
                 ts.remove_edges_from_matching(source, a);
@@ -92,10 +87,7 @@ impl OmegaSample {
         // separate in escaping and non-escaping (successful) runs
         let pos_successful: Vec<_> = self
             .positive_words()
-            .filter_map(|word| match ts.omega_run(&word) {
-                Ok(_) => Some(word),
-                Err(_) => None,
-            })
+            .filter(|word| ts.omega_run(word).is_ok())
             .cloned()
             .collect();
         for w in pos_successful {
@@ -104,10 +96,7 @@ impl OmegaSample {
 
         let neg_successful: Vec<_> = self
             .negative_words()
-            .filter_map(|word| match ts.omega_run(&word) {
-                Ok(_) => Some(word),
-                Err(_) => None,
-            })
+            .filter(|word| ts.omega_run(word).is_ok())
             .cloned()
             .collect();
         for w in neg_successful {

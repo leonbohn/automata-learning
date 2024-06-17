@@ -383,14 +383,6 @@ where
             }
         });
     // reject if a pair escaping from the same state with the same escape string is found
-    // for ((pos_reached, pos_esc_str), (neg_reached, neg_esc_str)) in pos_escaping.into_iter().cartesian_product(neg_escaping)
-    // {
-    //     // let pos_esc_str = w0.skip(pos_path.len());
-    //     // let neg_esc_str = w1.skip(neg_path.len());
-    //     if pos_reached == neg_reached && pos_esc_str.equals(neg_esc_str) {
-    //         return None;
-    //     }
-    // }
     for (pos_reached, pos_esc_str) in pos_escaping {
         for (neg_reached, neg_esc_str) in &neg_escaping {
             if pos_reached == *neg_reached && pos_esc_str.equals(neg_esc_str) {
