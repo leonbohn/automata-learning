@@ -3,7 +3,11 @@ use std::collections::HashMap;
 use std::iter;
 use std::ops::Not;
 
-use automata::{math::Set, prelude::*, transition_system::path::{self, LassoIn}};
+use automata::{
+    math::Set,
+    prelude::*,
+    transition_system::path::{self, LassoIn},
+};
 
 use crate::prefixtree::prefix_tree;
 
@@ -365,7 +369,7 @@ where
                 let reached = path.reached();
                 let escape_str = w.skip(path.len());
                 Either::Right((reached, escape_str))
-            },
+            }
         });
     let (neg_successful, neg_escaping): (Vec<_>, Vec<_>) = sample
         .negative_words()
@@ -376,7 +380,7 @@ where
                 let reached = path.reached();
                 let escape_str = w.skip(path.len());
                 Either::Right((reached, escape_str))
-            },
+            }
         });
     // reject if a pair escaping from the same state with the same escape string is found
     // for ((pos_reached, pos_esc_str), (neg_reached, neg_esc_str)) in pos_escaping.into_iter().cartesian_product(neg_escaping)
@@ -446,7 +450,7 @@ mod tests {
 
     // default alphabet
     fn sigma() -> CharAlphabet {
-        alphabet!(simple 'a', 'b')
+        CharAlphabet::of_size(2)
     }
 
     #[test]
@@ -616,17 +620,17 @@ mod tests {
             [upw!("ba"), upw!("bba")],
         );
         let sample5 = OmegaSample::new_omega_from_pos_neg(
-            alphabet!(simple 'a', 'b', 'c'),
+            CharAlphabet::of_size(3),
             [upw!("a"), upw!("b"), upw!("c")],
             [upw!("ab")],
         );
         let sample6 = OmegaSample::new_omega_from_pos_neg(
-            alphabet!(simple 'a', 'b', 'c'),
+            CharAlphabet::of_size(3),
             [upw!("ab"), upw!("b"), upw!("c")],
             [upw!("a")],
         );
         let sample7 = OmegaSample::new_omega_from_pos_neg(
-            alphabet!(simple 'a', 'b'),
+            CharAlphabet::of_size(2),
             [upw!("a"), upw!("aab")],
             [upw!("b"), upw!("abb")],
         );

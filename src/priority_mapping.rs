@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
+use dag::Dag;
 use impl_tools::autoimpl;
 use owo_colors::OwoColorize;
 
 use automata::{
-    dag::Dag,
     prelude::*,
     transition_system::dot::{DotStateAttribute, Dottable},
 };
