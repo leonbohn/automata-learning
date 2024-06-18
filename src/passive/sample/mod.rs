@@ -61,6 +61,12 @@ impl<A: Alphabet, W: LinearWord<A::Symbol>> Sample<A, W, bool> {
 }
 
 impl<A: Alphabet, W: LinearWord<A::Symbol>, C: Color> Sample<A, W, C> {
+    /// Create a new empty sample for the given alphabet
+    pub fn new_for_alphabet(alphabet: A) -> Self {
+        let words = math::Map::new();
+        Self { alphabet, words }
+    }
+
     pub fn into_joined(self, other: Sample<A, W, C>) -> Sample<A, W, C> {
         let words = self.words.into_iter().chain(other.words).collect();
         Sample {
@@ -124,6 +130,11 @@ impl<A: Alphabet, W: LinearWord<A::Symbol>, C: Color> Sample<A, W, C> {
         self.words
             .iter()
             .filter_map(move |(w, c)| if *c == color { Some(w) } else { None })
+    }
+
+    /// Remove the word-value pair equivalent to word
+    pub fn remove(&mut self, word: &W) {
+        self.words.shift_remove(word);
     }
 }
 
@@ -205,7 +216,7 @@ mod tests {
             Err(e) => panic!("Error parsing sample: {:?}", e),
         };
 
-        assert_eq!(sample.alphabet, alphabet!(simple 'a', 'b'));
+        assert_eq!(sample.alphabet, CharAlphabet::of_size(2));
         assert_eq!(sample.positive_size(), 4);
         assert_eq!(sample.negative_size(), 3);
         assert_eq!(sample.classify(&upw!("ab")), Some(false));
@@ -213,7 +224,7 @@ mod tests {
 
     #[test]
     fn to_periodic_sample() {
-        let alphabet = alphabet!(simple 'a', 'b');
+        let alphabet = CharAlphabet::of_size(2);
         // represents congruence e ~ b ~ aa ~\~ a ~ ab
         let sample = Sample::new_omega_from_pos_neg(
             alphabet,
@@ -234,7 +245,7 @@ mod tests {
     #[test]
     #[ignore]
     fn split_up_sample() {
-        let alphabet = alphabet!(simple 'a', 'b');
+        let alphabet = CharAlphabet::of_size(2);
         // represents congruence e ~ b ~ aa ~\~ a ~ ab
         let sample = Sample::new_omega(
             alphabet.clone(),

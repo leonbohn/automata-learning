@@ -3,6 +3,7 @@ use std::collections::VecDeque;
 use automata::prelude::*;
 use itertools::Itertools;
 use tracing::{debug, trace};
+use word::ReducedParseError;
 
 use crate::passive::{
     dpainf::{

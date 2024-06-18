@@ -145,7 +145,7 @@ mod tests {
     #[test_log::test]
     #[ignore]
     fn infer_precise_dpa_inf_aa() {
-        let alphabet = alphabet!(simple 'a', 'b', 'c');
+        let alphabet = CharAlphabet::of_size(3);
         let sample = sample! {alphabet; pos "a", "aab", "aaab", "bbaa", "aca", "caa", "abca", "baac"; neg "c", "b", "bc", "abc", "cba", "ac", "ba"};
 
         let t = std::time::Instant::now();

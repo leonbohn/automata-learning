@@ -2,7 +2,7 @@ use automata::prelude::*;
 use automata_learning::{active::SampleOracle, passive::FiniteSample};
 
 fn build_sample_oracle_last_sym() -> SampleOracle<CharAlphabet, Vec<char>, usize> {
-    let alphabet = alphabet!(simple 'a', 'b');
+    let alphabet = CharAlphabet::of_size(2);
     let classified_words = [
         "a", "b", "aa", "ab", "ba", "bb", "aaa", "aab", "aba", "abb", "baa", "bab", "bba", "bbb",
     ]
