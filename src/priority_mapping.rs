@@ -8,9 +8,22 @@ use automata::{
     transition_system::dot::{DotStateAttribute, Dottable},
 };
 
+/// A family of weak priority mappings (FWPM) is a pair (C, M) where C is a
+/// right congruence relation and for each class c of C, M_c is a Mealy machine.
+/// Each mealy machine M_c is called a component of the FWPM and the mapping
+/// it computes (on non-empty words) is weak in the sense that M_c(xy) <= M_c(x)
+/// for all x and y.
+#[derive(Clone)]
+pub struct FamilyOfWeakPriorityMappings<A: Alphabet = CharAlphabet> {
+    cong: RightCongruence<A>,
+    pms: Vec<WeakPriorityMapping<A>>,
+}
+
+impl<A: Alphabet> FamilyOfWeakPriorityMappings<A> {}
+
 /// A priority mapping is essentially a [`crate::MealyMachine`], i.e. it reads
 /// finite words and ouptuts a priority (which in this case is a `usize`).
-pub type Family<A = CharAlphabet> = MealyMachine<A>;
+pub type WeakPriorityMapping<A = CharAlphabet> = MealyMachine<A>;
 
 #[derive(Clone)]
 pub struct SubMapping<'ts, A: Alphabet> {
@@ -211,16 +224,3 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
         )
     }
 }
-
-/// A family of weak priority mappings (FWPM) is a pair (C, M) where C is a
-/// right congruence relation and for each class c of C, M_c is a Mealy machine.
-/// Each mealy machine M_c is called a component of the FWPM and the mapping
-/// it computes (on non-empty words) is weak in the sense that M_c(xy) <= M_c(x)
-/// for all x and y.
-#[derive(Clone)]
-pub struct Fwpm<A: Alphabet = CharAlphabet> {
-    cong: RightCongruence<A>,
-    pms: Vec<Family<A>>,
-}
-
-impl<A: Alphabet> Fwpm<A> {}
