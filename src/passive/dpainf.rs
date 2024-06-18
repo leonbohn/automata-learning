@@ -18,7 +18,6 @@ use owo_colors::OwoColorize;
 /// omega-sprout algorithm to ensure in each iteration, that the produced congruence relation
 /// is consistent with the given constraints. The constraints can either be given by a conflict
 /// relation, by a list or they could be verified against a sample (or other form of data).
-#[impl_tools::autoimpl(for<T: trait> &T)]
 pub trait ConsistencyCheck<A: Alphabet> {
     /// Verifies that `cong` is consistent with the constraint.
     fn consistent(&self, cong: &RightCongruence<A>) -> bool;
@@ -27,6 +26,18 @@ pub trait ConsistencyCheck<A: Alphabet> {
     fn threshold(&self) -> usize;
     /// Returns a reference to the alphabet used by the constraint.
     fn alphabet(&self) -> &A;
+}
+
+impl<A: Alphabet, CC: ConsistencyCheck<A>> ConsistencyCheck<A> for &CC {
+    fn alphabet(&self) -> &A {
+        CC::alphabet(self)
+    }
+    fn consistent(&self, cong: &RightCongruence<A>) -> bool {
+        CC::consistent(self, cong)
+    }
+    fn threshold(&self) -> usize {
+        CC::threshold(self)
+    }
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A, bool> {

@@ -44,7 +44,7 @@ impl<A: Alphabet> OmegaSample<A> {
     pub fn prefix_tree(&self) -> RightCongruence<A> {
         prefix_tree(self.alphabet().clone(), self.words())
             .erase_state_colors()
-            .into_right_congruence()
+            .collect_right_congruence()
     }
 }
 
@@ -61,6 +61,12 @@ impl<A: Alphabet, W: LinearWord<A::Symbol>> Sample<A, W, bool> {
 }
 
 impl<A: Alphabet, W: LinearWord<A::Symbol>, C: Color> Sample<A, W, C> {
+    /// Create a new empty sample for the given alphabet
+    pub fn new_for_alphabet(alphabet: A) -> Self {
+        let words = math::Map::new();
+        Self { alphabet, words }
+    }
+
     pub fn into_joined(self, other: Sample<A, W, C>) -> Sample<A, W, C> {
         let words = self.words.into_iter().chain(other.words).collect();
         Sample {
@@ -124,6 +130,11 @@ impl<A: Alphabet, W: LinearWord<A::Symbol>, C: Color> Sample<A, W, C> {
         self.words
             .iter()
             .filter_map(move |(w, c)| if *c == color { Some(w) } else { None })
+    }
+
+    /// Remove the word-value pair equivalent to word
+    pub fn remove(&mut self, word: &W) {
+        self.words.shift_remove(word);
     }
 }
 
@@ -277,7 +288,7 @@ mod tests {
             time_start.elapsed().as_micros()
         );
 
-        let dfa = cong.map_state_colors(|_| true).into_dfa();
+        let dfa = cong.map_state_colors(|_| true).collect_dfa();
         for prf in ["aba", "ababbbbbb", "", "aa", "b", "bbabbab"] {
             assert!(dfa.accepts(prf));
         }

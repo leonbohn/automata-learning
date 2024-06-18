@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use dag::Dag;
-use impl_tools::autoimpl;
 use owo_colors::OwoColorize;
 
 use automata::{
@@ -98,9 +97,14 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
     }
 }
 
-#[autoimpl(for<T: trait + ?Sized> &T)]
 pub trait ClassifiesIdempotents<A: Alphabet> {
     fn classify(&self, class: impl FiniteWord<A::Symbol>) -> Option<bool>;
+}
+
+impl<A: Alphabet, CI: ClassifiesIdempotents<A>> ClassifiesIdempotents<A> for &CI {
+    fn classify(&self, class: impl FiniteWord<<A as Alphabet>::Symbol>) -> Option<bool> {
+        CI::classify(self, class)
+    }
 }
 
 impl<A: Alphabet> Debug for AnnotatedCongruence<A> {
