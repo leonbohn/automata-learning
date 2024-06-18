@@ -14,7 +14,8 @@ impl<S: Symbol> FiniteWord<S> for Experiment<S> {
     }
 }
 
-impl<S: Symbol> LinearWord<S> for Experiment<S> {
+impl<S: Symbol> Word<S> for Experiment<S> {
+    const FINITE: bool = true;
     fn nth(&self, position: usize) -> Option<S> {
         self.0.get(position).cloned()
     }

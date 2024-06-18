@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use automata::prelude::*;
+use either::Either;
 use itertools::Itertools;
 use tracing::{debug, trace};
 use word::ReducedParseError;
@@ -46,7 +47,7 @@ impl std::fmt::Display for OmegaSampleParseError {
     }
 }
 
-impl TryFrom<&str> for OmegaSample<CharAlphabet, bool> {
+impl TryFrom<&str> for OmegaSample<CharAlphabet> {
     type Error = OmegaSampleParseError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -54,7 +55,7 @@ impl TryFrom<&str> for OmegaSample<CharAlphabet, bool> {
     }
 }
 
-impl TryFrom<Vec<String>> for OmegaSample<CharAlphabet, bool> {
+impl TryFrom<Vec<String>> for OmegaSample<CharAlphabet> {
     type Error = OmegaSampleParseError;
 
     fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
@@ -127,7 +128,7 @@ impl TryFrom<Vec<String>> for OmegaSample<CharAlphabet, bool> {
     }
 }
 
-impl<A: Alphabet> OmegaSample<A, bool> {
+impl<A: Alphabet> OmegaSample<A> {
     /// Creates a new `OmegaSample` from an alphabet as well as two iterators, one
     /// over positive words and one over negative words.
     pub fn new_omega_from_pos_neg<
@@ -141,11 +142,8 @@ impl<A: Alphabet> OmegaSample<A, bool> {
     ) -> Self {
         Self {
             alphabet,
-            words: positive
-                .into_iter()
-                .map(|w| (w.into(), true))
-                .chain(negative.into_iter().map(|w| (w.into(), false)))
-                .collect(),
+            positive: positive.into_iter().map(|w| w.into()).collect(),
+            negative: negative.into_iter().map(|w| w.into()).collect(),
         }
     }
 
@@ -173,16 +171,6 @@ impl<A: Alphabet> OmegaSample<A, bool> {
     /// Computes the [`RightCongruence`] underlying the sample.
     pub fn infer_prefix_congruence(&self) -> Result<RightCongruence<A>, ()> {
         dpainf(prefix_consistency_conflicts(self), vec![], true)
-    }
-
-    /// Returns the positive size, i.e. the number of positive words.
-    pub fn positive_size(&self) -> usize {
-        self.words_with_color(true).count()
-    }
-
-    /// Returns the negative size, i.e. the number of negative words.
-    pub fn negative_size(&self) -> usize {
-        self.words_with_color(false).count()
     }
 }
 
@@ -243,22 +231,29 @@ impl<A: Alphabet> PeriodicOmegaSample<A> {
     }
 }
 
-impl<A: Alphabet, C: Color> OmegaSample<A, C> {
+impl<A: Alphabet> OmegaSample<A> {
     /// Create a new sample of infinite words. The words in the sample are given as an iterator yielding (word, color) pairs.
-    pub fn new_omega<W: Into<ReducedOmegaWord<A::Symbol>>, J: IntoIterator<Item = (W, C)>>(
+    pub fn new_omega<W: Into<ReducedOmegaWord<A::Symbol>>, J: IntoIterator<Item = (W, bool)>>(
         alphabet: A,
         words: J,
     ) -> Self {
-        let words = words
-            .into_iter()
-            .map(|(word, color)| (word.into(), color))
-            .collect();
+        let (positive, negative) = words.into_iter().partition_map(|(w, b)| {
+            if b {
+                Either::Left(w.into())
+            } else {
+                Either::Right(w.into())
+            }
+        });
 
-        Self { alphabet, words }
+        Self {
+            alphabet,
+            positive,
+            negative,
+        }
     }
 
     /// Splits the sample into a map of [`ClassOmegaSample`]s, one for each class of the underlying [`RightCongruence`].
-    pub fn split<'a>(&self, cong: &'a RightCongruence<A>) -> SplitOmegaSample<'a, A, C> {
+    pub fn split<'a>(&self, cong: &'a RightCongruence<A>) -> SplitOmegaSample<'a, A> {
         debug_assert!(
             cong.size() > 0,
             "Makes only sense for non-empty congruences"
@@ -271,8 +266,7 @@ impl<A: Alphabet, C: Color> OmegaSample<A, C> {
             ClassOmegaSample::new(cong, Class::epsilon(), self.clone()),
         );
         let mut queue: VecDeque<_> = self
-            .words
-            .iter()
+            .entries()
             .map(|(w, c)| (initial, w.reduced(), c))
             .collect();
 
@@ -292,9 +286,7 @@ impl<A: Alphabet, C: Color> OmegaSample<A, C> {
                         )
                     })
                     .sample_mut()
-                    .words
-                    .insert(suffix.reduced(), color.clone())
-                    .is_none()
+                    .insert(suffix.reduced(), color)
                 {
                     trace!("Added word {:?} to state {}", suffix, reached);
                     queue.push_back((reached, suffix.reduced(), color));

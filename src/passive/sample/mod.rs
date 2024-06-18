@@ -27,18 +27,18 @@ mod canonic_coloring;
 /// Represents a finite sample, which is a pair of positive and negative instances.
 #[derive(Clone, Eq, PartialEq)]
 #[allow(missing_docs)]
-pub struct Sample<A: Alphabet, W: LinearWord<A::Symbol> + Hash, C: Color = bool> {
+pub struct Sample<A: Alphabet, W: Word<A::Symbol> + Hash> {
     pub alphabet: A,
-    pub words: math::Map<W, C>,
+    pub positive: math::Set<W>,
+    pub negative: math::Set<W>,
 }
 
 /// Type alias for samples over the alphabet `A`, containing finite words which are classified with color `C`,
 /// which defaults to `bool`.
-pub type FiniteSample<A = CharAlphabet, C = bool> = Sample<A, Vec<<A as Alphabet>::Symbol>, C>;
+pub type FiniteSample<A = CharAlphabet> = Sample<A, Vec<<A as Alphabet>::Symbol>>;
 /// Type alias for samples over alphabet `A` which contain infinite/omega words that are classified with `C`,
 /// which defaults to `bool`.
-pub type OmegaSample<A = CharAlphabet, C = bool> =
-    Sample<A, ReducedOmegaWord<<A as Alphabet>::Symbol>, C>;
+pub type OmegaSample<A = CharAlphabet> = Sample<A, ReducedOmegaWord<<A as Alphabet>::Symbol>>;
 
 impl<A: Alphabet> OmegaSample<A> {
     pub fn prefix_tree(&self) -> RightCongruence<A> {
@@ -48,50 +48,80 @@ impl<A: Alphabet> OmegaSample<A> {
     }
 }
 
-impl<A: Alphabet, W: LinearWord<A::Symbol>> Sample<A, W, bool> {
+impl<A: Alphabet, W: Word<A::Symbol>> Sample<A, W> {}
+
+impl<A: Alphabet, W: Word<A::Symbol>> Sample<A, W> {
+    const FINITE: bool = W::FINITE;
+
+    pub fn count_words(&self) -> usize {
+        self.positive.len() + self.negative.len()
+    }
+
+    pub fn count_positive_words(&self) -> usize {
+        self.positive.len()
+    }
+
+    pub fn count_negative_words(&self) -> usize {
+        self.negative.len()
+    }
+
     /// Gives an iterator over all positive words in the sample.
     pub fn positive_words(&self) -> impl Iterator<Item = &'_ W> + '_ {
-        self.words_with_color(true)
+        self.positive.iter()
     }
 
     /// Gives an iterator over all negative words in the sample.
     pub fn negative_words(&self) -> impl Iterator<Item = &'_ W> + '_ {
-        self.words_with_color(false)
+        self.negative.iter()
     }
-}
 
-impl<A: Alphabet, W: LinearWord<A::Symbol>, C: Color> Sample<A, W, C> {
     /// Create a new empty sample for the given alphabet
     pub fn new_for_alphabet(alphabet: A) -> Self {
-        let words = math::Map::new();
-        Self { alphabet, words }
-    }
-
-    pub fn into_joined(self, other: Sample<A, W, C>) -> Sample<A, W, C> {
-        let words = self.words.into_iter().chain(other.words).collect();
-        Sample {
-            alphabet: self.alphabet,
-            words,
+        Self {
+            alphabet,
+            positive: math::Set::default(),
+            negative: math::Set::default(),
         }
     }
 
-    pub fn append(&mut self, other: Sample<A, W, C>) {
-        self.words.extend(other.words);
+    pub fn into_joined(self, other: Sample<A, W>) -> Sample<A, W> {
+        let Sample {
+            alphabet,
+            mut positive,
+            mut negative,
+        } = self;
+        positive.extend(other.positive);
+        negative.extend(other.negative);
+        Sample {
+            positive,
+            negative,
+            alphabet,
+        }
     }
 
-    pub fn as_joined(&self, other: &Sample<A, W, C>) -> Sample<A, W, C>
+    pub fn append(&mut self, other: Sample<A, W>) {
+        self.positive.extend(other.positive);
+        self.negative.extend(other.negative);
+    }
+
+    pub fn as_joined(&self, other: &Sample<A, W>) -> Sample<A, W>
     where
         W: Clone,
     {
-        let words = self
-            .words
-            .iter()
-            .chain(other.words.iter())
-            .map(|(w, c)| (w.clone(), c.clone()))
-            .collect();
         Sample {
             alphabet: self.alphabet.clone(),
-            words,
+            positive: self
+                .positive
+                .iter()
+                .chain(other.positive.iter())
+                .cloned()
+                .collect(),
+            negative: self
+                .negative
+                .iter()
+                .chain(other.negative.iter())
+                .cloned()
+                .collect(),
         }
     }
 
@@ -102,54 +132,88 @@ impl<A: Alphabet, W: LinearWord<A::Symbol>, C: Color> Sample<A, W, C> {
 
     /// Gives an iterator over all words in the sample.
     pub fn words(&self) -> impl Iterator<Item = &'_ W> + '_ {
-        self.words.keys()
+        self.positive.iter().interleave(self.negative.iter())
     }
 
     /// Returns an iterator over all pairs (w, c) of words w with their classification c that
     /// are present in the sample.
-    pub fn entries(&self) -> impl Iterator<Item = (&'_ W, &'_ C)> + '_ {
-        self.words.iter()
+    pub fn entries(&self) -> impl Iterator<Item = (&'_ W, bool)> + '_ {
+        self.positive
+            .iter()
+            .map(|w| (w, true))
+            .interleave(self.negative.iter().map(|w| (w, false)))
     }
 
     /// Classifying a word returns the color that is associated with it.
-    pub fn classify<V>(&self, word: &V) -> Option<C>
+    pub fn classify<V>(&self, word: &V) -> Option<bool>
     where
         V: Hash + Eq,
         W: Borrow<V>,
     {
-        self.words.get(word).cloned()
+        let pos = self.positive.contains(word);
+        let neg = self.negative.contains(word);
+        assert!(
+            !pos || !neg,
+            "word cannot be positive and negative at the same time!"
+        );
+        if pos {
+            Some(true)
+        } else if neg {
+            Some(false)
+        } else {
+            None
+        }
     }
 
     /// Checks whether a word is contained in the sample.
     pub fn contains(&self, word: &W) -> bool {
-        self.words.contains_key(word)
+        self.positive.contains(word) || self.negative.contains(word)
     }
 
-    /// Gives an iterator over all words in the sample with the associated color.
-    pub fn words_with_color(&self, color: C) -> impl Iterator<Item = &'_ W> + '_ {
-        self.words
-            .iter()
-            .filter_map(move |(w, c)| if *c == color { Some(w) } else { None })
+    /// Inserts given word with given classification. Returns `true` if the word
+    /// was not present before.
+    pub fn insert(&mut self, word: W, classification: bool) -> bool {
+        if classification {
+            assert!(!self.negative.contains(&word));
+            self.positive.insert(word)
+        } else {
+            assert!(!self.positive.contains(&word));
+            self.negative.insert(word)
+        }
     }
 
-    /// Remove the word-value pair equivalent to word
-    pub fn remove(&mut self, word: &W) {
-        self.words.shift_remove(word);
+    /// Remove the word-value pair equivalent to word and return the classification
+    /// if it was part of the sample.
+    pub fn remove(&mut self, word: &W) -> Option<bool> {
+        if self.positive.swap_remove(word) {
+            Some(true)
+        } else if self.negative.swap_remove(word) {
+            Some(false)
+        } else {
+            None
+        }
     }
 }
 
-impl<A: Alphabet, C: Color> FiniteSample<A, C> {
+impl<A: Alphabet> FiniteSample<A> {
     /// Create a new sample of finite words from the given alphabet and iterator over annotated words. The sample is given
     /// as an iterator over its symbols. The words are given as an iterator of pairs (word, color).
-    pub fn new_finite<I: IntoIterator<Item = A::Symbol>, J: IntoIterator<Item = (I, C)>>(
+    pub fn new_finite<I: IntoIterator<Item = A::Symbol>, J: IntoIterator<Item = (I, bool)>>(
         alphabet: A,
         words: J,
     ) -> Self {
-        let words = words
-            .into_iter()
-            .map(|(word, color)| (word.into_iter().collect(), color))
-            .collect();
-        Self { alphabet, words }
+        let (positive, negative) = words.into_iter().partition_map(|(w, c)| {
+            if c {
+                either::Either::Left(w.into_iter().collect())
+            } else {
+                either::Either::Right(w.into_iter().collect())
+            }
+        });
+        Self {
+            alphabet,
+            positive,
+            negative,
+        }
     }
 
     /// Returns the maximum length of any finite word in the sample. Gives back `0` if no word exists in the sample.
@@ -158,33 +222,26 @@ impl<A: Alphabet, C: Color> FiniteSample<A, C> {
     }
 }
 
-impl<A, W, C> Debug for Sample<A, W, C>
+impl<A, W> Debug for Sample<A, W>
 where
     A: Alphabet + Debug,
-    W: LinearWord<A::Symbol> + Debug,
-    C: Color + Debug,
+    W: Word<A::Symbol> + Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "Sample with alphabet {:?} and {} words",
             self.alphabet,
-            self.words.len()
+            self.count_words()
         )?;
-        for (word, color) in &self.words {
-            write!(f, "\n\t{:?}\t{:?}", color, word)?;
+        for pos in self.positive_words() {
+            write!(f, "\n+ {pos:?}")?;
+        }
+        for neg in self.negative_words() {
+            write!(f, "\n+ {neg:?}")?;
         }
         Ok(())
     }
-}
-
-/// Macro for creating an alphabet. For now, this is limited to creating [`CharAlphabet`]s. Invocation is
-/// done as `alphabet!(simple 'a', 'b', 'c')` to create such an alphabet with the symbols 'a', 'b' and 'c'.
-#[macro_export]
-macro_rules! sample {
-    ($alph:expr; pos $($pos:expr),+; neg $($neg:expr),+) => {
-        $crate::passive::Sample::new_omega($alph, [$($pos),+].into_iter().map(|p| ($crate::passive::ReducedOmegaWord::try_from(p).unwrap(), true)).chain([$($neg),+].into_iter().map(|n| ($crate::passive::ReducedOmegaWord::try_from(n).unwrap(), false))).collect::<automata::math::Map<_, bool>>())
-    };
 }
 
 #[cfg(test)]
@@ -217,8 +274,8 @@ mod tests {
         };
 
         assert_eq!(sample.alphabet, CharAlphabet::of_size(2));
-        assert_eq!(sample.positive_size(), 4);
-        assert_eq!(sample.negative_size(), 3);
+        assert_eq!(sample.count_positive_words(), 4);
+        assert_eq!(sample.count_negative_words(), 3);
         assert_eq!(sample.classify(&upw!("ab")), Some(false));
     }
 

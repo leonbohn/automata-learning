@@ -60,7 +60,7 @@ pub fn dfa_rpni<A: Alphabet>(sample: &FiniteSample<A, bool>) -> DFA<A> {
 }
 
 /// Executes a variant of the RPNI algorithm for omega-words, producing a DBA.
-pub fn dba_rpni<A: Alphabet>(sample: &OmegaSample<A, bool>) -> DBA<A> {
+pub fn dba_rpni<A: Alphabet>(sample: &OmegaSample<A>) -> DBA<A> {
     todo!()
 }
 
@@ -74,7 +74,7 @@ pub fn dba_rpni<A: Alphabet>(sample: &OmegaSample<A, bool>) -> DBA<A> {
 ///   the leading congruence infered before
 /// - build the precise DPA from the FWPM
 pub fn infer_precise_dpa<A: Alphabet>(
-    sample: &OmegaSample<A, bool>,
+    sample: &OmegaSample<A>,
 ) -> PreciseDPA<A, { precise::PRECISE_DPA_COLORS }> {
     let cong = sample.infer_prefix_congruence().unwrap();
     let split = sample.split(&cong);
@@ -102,7 +102,7 @@ pub fn infer_precise_dpa<A: Alphabet>(
 }
 
 /// Similar to [`dba_rpni`], but produces a DPA instead.
-pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet, bool>) -> DPA {
+pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet>) -> DPA {
     let precise = infer_precise_dpa(sample);
     let pta = sample.prefix_tree().erase_state_colors();
 
@@ -146,7 +146,28 @@ mod tests {
     #[ignore]
     fn infer_precise_dpa_inf_aa() {
         let alphabet = CharAlphabet::of_size(3);
-        let sample = sample! {alphabet; pos "a", "aab", "aaab", "bbaa", "aca", "caa", "abca", "baac"; neg "c", "b", "bc", "abc", "cba", "ac", "ba"};
+        let sample = OmegaSample::new_omega_from_pos_neg(
+            alphabet,
+            [
+                upw!("a"),
+                upw!("aab"),
+                upw!("aaab"),
+                upw!("bbaa"),
+                upw!("aca"),
+                upw!("caa"),
+                upw!("abca"),
+                upw!("baac"),
+            ],
+            [
+                upw!("c"),
+                upw!("b"),
+                upw!("bc"),
+                upw!("abc"),
+                upw!("cba"),
+                upw!("ac"),
+                upw!("ba"),
+            ],
+        );
 
         let t = std::time::Instant::now();
         let dpa = super::infer_precise_dpa(&sample).collect_dpa();

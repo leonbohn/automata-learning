@@ -7,32 +7,32 @@ use super::{OmegaSample, Sample};
 
 /// An [`OmegaSample`] restricted/split onto one [`Class`] of a [`RightCongruence`].
 #[derive(Clone)]
-pub struct ClassOmegaSample<'a, A: Alphabet, C: Color> {
+pub struct ClassOmegaSample<'a, A: Alphabet> {
     congruence: &'a RightCongruence<A>,
     class: Class<A::Symbol>,
-    sample: OmegaSample<A, C>,
+    sample: OmegaSample<A>,
 }
 
-impl<'a, A: Alphabet, C: Color> std::ops::Deref for ClassOmegaSample<'a, A, C> {
-    type Target = OmegaSample<A, C>;
+impl<'a, A: Alphabet> std::ops::Deref for ClassOmegaSample<'a, A> {
+    type Target = OmegaSample<A>;
 
     fn deref(&self) -> &Self::Target {
         &self.sample
     }
 }
 
-impl<'a, A: Alphabet, C: Color> std::ops::DerefMut for ClassOmegaSample<'a, A, C> {
+impl<'a, A: Alphabet> std::ops::DerefMut for ClassOmegaSample<'a, A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.sample
     }
 }
 
-impl<'a, A: Alphabet, C: Color> ClassOmegaSample<'a, A, C> {
+impl<'a, A: Alphabet> ClassOmegaSample<'a, A> {
     /// Creates a new [`ClassOmegaSample`] from a [`RightCongruence`], a [`Class`] and a [`Sample`].
     pub fn new(
         congruence: &'a RightCongruence<A>,
         class: Class<A::Symbol>,
-        sample: OmegaSample<A, C>,
+        sample: OmegaSample<A>,
     ) -> Self {
         Self {
             congruence,
@@ -42,12 +42,12 @@ impl<'a, A: Alphabet, C: Color> ClassOmegaSample<'a, A, C> {
     }
 
     /// Returns a reference to the underlying sample.
-    pub fn sample(&self) -> &OmegaSample<A, C> {
+    pub fn sample(&self) -> &OmegaSample<A> {
         &self.sample
     }
 
     /// Gives a mutable reference to the underlying sample.
-    pub fn sample_mut(&mut self) -> &mut OmegaSample<A, C> {
+    pub fn sample_mut(&mut self) -> &mut OmegaSample<A> {
         &mut self.sample
     }
 
@@ -58,7 +58,8 @@ impl<'a, A: Alphabet, C: Color> ClassOmegaSample<'a, A, C> {
             class,
             sample: Sample {
                 alphabet,
-                words: math::Map::default(),
+                positive: math::Set::default(),
+                negative: math::Set::default(),
             },
         }
     }
@@ -67,22 +68,22 @@ impl<'a, A: Alphabet, C: Color> ClassOmegaSample<'a, A, C> {
 /// Represents a right congruence relation together with a collection of split samples, one
 /// associated with each class of the congruence.
 #[derive(Clone)]
-pub struct SplitOmegaSample<'a, A: Alphabet, C: Color> {
+pub struct SplitOmegaSample<'a, A: Alphabet> {
     congruence: &'a RightCongruence<A>,
-    split: math::Map<StateIndex, ClassOmegaSample<'a, A, C>>,
+    split: math::Map<StateIndex, ClassOmegaSample<'a, A>>,
 }
 
-impl<'a, A: Alphabet, C: Color> SplitOmegaSample<'a, A, C> {
+impl<'a, A: Alphabet> SplitOmegaSample<'a, A> {
     /// Creates a new object from the given congruence and the split
     pub fn new(
         congruence: &'a RightCongruence<A>,
-        split: math::Map<StateIndex, ClassOmegaSample<'a, A, C>>,
+        split: math::Map<StateIndex, ClassOmegaSample<'a, A>>,
     ) -> Self {
         Self { congruence, split }
     }
 
     /// Obtain a reference to the split sample for the given class/index.
-    pub fn get(&self, index: StateIndex) -> Option<&ClassOmegaSample<'a, A, C>> {
+    pub fn get(&self, index: StateIndex) -> Option<&ClassOmegaSample<'a, A>> {
         self.split.get(&index)
     }
 
@@ -97,7 +98,7 @@ impl<'a, A: Alphabet, C: Color> SplitOmegaSample<'a, A, C> {
     }
 }
 
-impl<'a, A: Alphabet> SplitOmegaSample<'a, A, bool> {
+impl<'a, A: Alphabet> SplitOmegaSample<'a, A> {
     /// Infers a family of right congruences bz first constructing a conflict relation which is then used
     /// as a constraint for the sprout/glerc algorithm.
     pub fn infer_forc(&self) -> FORC<A> {

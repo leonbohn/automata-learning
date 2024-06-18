@@ -40,7 +40,7 @@ impl<A: Alphabet, CC: ConsistencyCheck<A>> ConsistencyCheck<A> for &CC {
     }
 }
 
-impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A, bool> {
+impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A> {
     fn consistent(&self, cong: &RightCongruence<A>) -> bool {
         let positive_indices: math::Set<_> = self
             .positive_words()
@@ -119,7 +119,7 @@ impl<A: Alphabet> ConflictRelation<A> {
 /// Computes a conflict relation encoding iteration consistency. For more details on the construction,
 /// see Lemma 29 in [this paper](https://arxiv.org/pdf/2302.11043.pdf).
 pub fn iteration_consistency_conflicts<A: Alphabet>(
-    samples: &SplitOmegaSample<'_, A, bool>,
+    samples: &SplitOmegaSample<'_, A>,
     class: Class<A::Symbol>,
 ) -> ConflictRelation<A> {
     let idx = samples.cong().reached_state_index(&class).unwrap();
@@ -206,7 +206,7 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
 
 /// Computes a conflict relation encoding prefix consistency. For more details on how this works, see
 /// Lemma 28 in [this paper](https://arxiv.org/pdf/2302.11043.pdf).
-pub fn prefix_consistency_conflicts<A: Alphabet, S: std::borrow::Borrow<OmegaSample<A, bool>>>(
+pub fn prefix_consistency_conflicts<A: Alphabet, S: std::borrow::Borrow<OmegaSample<A>>>(
     sample: S,
 ) -> ConflictRelation<A> {
     let sample = sample.borrow();
@@ -265,12 +265,12 @@ impl<A: Alphabet> ConsistencyCheck<A> for () {
 /// This constraint ensures that the learned automaton separates idempotents.
 #[derive(Clone)]
 pub struct SeparatesIdempotents<'a, A: Alphabet> {
-    sample: &'a ClassOmegaSample<'a, A, bool>,
+    sample: &'a ClassOmegaSample<'a, A>,
 }
 
 impl<'a, A: Alphabet> SeparatesIdempotents<'a, A> {
     /// Creates a new instance of the constraint.
-    pub fn new(sample: &'a ClassOmegaSample<'a, A, bool>) -> Self {
+    pub fn new(sample: &'a ClassOmegaSample<'a, A>) -> Self {
         Self { sample }
     }
 }
@@ -361,7 +361,7 @@ pub(crate) mod tests {
 
     use crate::passive::{dpainf::ConflictRelation, sample::OmegaSample, Sample};
 
-    pub fn inf_aba_sample() -> (CharAlphabet, OmegaSample<CharAlphabet, bool>) {
+    pub fn inf_aba_sample() -> (CharAlphabet, OmegaSample<CharAlphabet>) {
         let Ok(sample) = OmegaSample::try_from(
             r#"omega
             alphabet: a,b
@@ -389,7 +389,7 @@ pub(crate) mod tests {
         (sample.alphabet.clone(), sample)
     }
 
-    pub fn testing_larger_forc_sample() -> (CharAlphabet, OmegaSample<CharAlphabet, bool>) {
+    pub fn testing_larger_forc_sample() -> (CharAlphabet, OmegaSample<CharAlphabet>) {
         let Ok(sample) = OmegaSample::try_from(
             r#"omega
         alphabet: a,b
@@ -446,7 +446,7 @@ pub(crate) mod tests {
         (sample.alphabet.clone(), sample)
     }
 
-    fn testing_smaller_forc_smaple() -> (CharAlphabet, OmegaSample<CharAlphabet, bool>) {
+    fn testing_smaller_forc_smaple() -> (CharAlphabet, OmegaSample<CharAlphabet>) {
         let alphabet = CharAlphabet::of_size(3);
         (
             alphabet.clone(),
