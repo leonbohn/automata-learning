@@ -36,7 +36,8 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
             // compute default automaton
             return acc_type.default_automaton(&sample);
         }
-        let source = ts.finite_run(u).unwrap().reached();
+        // dbg!(u.len());
+        let source = ts.finite_run(&u).unwrap().reached();
         for q in ts.state_indices_vec() {
             // try adding transition
             ts.add_edge((source, a, Void, q));
@@ -48,6 +49,10 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
                 pos_sets = pos_sets_new;
                 neg_sets = neg_sets_new;
                 mut_sample.remove_non_escaping(&ts);
+                // dbg!(ts.size());
+                // dbg!(pos_sets.len());
+                // dbg!(neg_sets.len());
+                // dbg!(mut_sample.words.len());
                 continue 'outer;
             } else {
                 ts.remove_edges_from_matching(source, a);
