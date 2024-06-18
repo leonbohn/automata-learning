@@ -371,33 +371,15 @@ where
                 Either::Right((reached, escape_str.reduced()))
             }
         });
-    let (neg_successful, neg_escaping): (Vec<_>, Vec<_>) = sample
-        .negative_words()
-        .map(|w| (ts.omega_run(w), w))
-        .partition_map(|r| match r {
-            (Ok(v), _) => Either::Left(v),
-            (Err(path), w) => {
+
+    let mut neg_successful = Vec::default();
+    for (output, w) in sample.negative_words().map(|w| (ts.omega_run(w), w)) {
+        match output {
+            Ok(v) => neg_successful.push(v),
+            Err(path) => {
                 let reached = path.reached();
-                let escape_str = w.skip(path.len());
-                Either::Right((reached, escape_str.reduced()))
-            }
-        });
-    // reject if a pair escaping from the same state with the same escape string is found
-
-    // Create a HashMap from neg_escaping for fast lookup
-    let mut neg_map: HashMap<u32, Vec<_>> = HashMap::new();
-    for (neg_reached, neg_esc_str) in neg_escaping {
-        neg_map
-            .entry(neg_reached)
-            .or_insert(Vec::new())
-            .push(neg_esc_str);
-    }
-
-    // Iterate over pos_escaping and check for matches in neg_map
-    for (pos_reached, pos_esc_str) in pos_escaping {
-        if let Some(neg_esc_str_vec) = neg_map.get(&pos_reached) {
-            for neg_esc_str in neg_esc_str_vec {
-                if pos_esc_str == *neg_esc_str {
+                let escape_prefix = w.skip(path.len()).reduced();
+                if pos_escaping.contains(&(reached, escape_prefix)) {
                     return None;
                 }
             }
