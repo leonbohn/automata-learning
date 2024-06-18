@@ -86,25 +86,16 @@ impl OmegaSample {
     pub fn remove_non_escaping<T>(&mut self, ts: &T)
     where
         T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
-        // <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
     {
         // run transition system on sample words and
         // separate in escaping and non-escaping (successful) runs
-        let pos_successful: Vec<_> = self
-            .positive_words()
-            .filter(|word| ts.omega_run(word).is_ok())
+        let successful: Vec<_> = self
+            .words
+            .keys()
+            .filter(|w| ts.omega_run(w).is_ok())
             .cloned()
             .collect();
-        for w in pos_successful {
-            self.remove(&w);
-        }
-
-        let neg_successful: Vec<_> = self
-            .negative_words()
-            .filter(|word| ts.omega_run(word).is_ok())
-            .cloned()
-            .collect();
-        for w in neg_successful {
+        for w in successful {
             self.remove(&w);
         }
     }

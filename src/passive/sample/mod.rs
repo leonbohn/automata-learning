@@ -134,7 +134,7 @@ impl<A: Alphabet, W: LinearWord<A::Symbol>, C: Color> Sample<A, W, C> {
 
     /// Remove the word-value pair equivalent to word
     pub fn remove(&mut self, word: &W) {
-        self.words.shift_remove(word);
+        self.words.swap_remove(word);
     }
 }
 
