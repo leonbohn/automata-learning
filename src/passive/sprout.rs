@@ -31,50 +31,46 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
     let mut pos_sets = vec![];
     let mut neg_sets = vec![];
     let mut mut_sample = sample.clone();
-    'outer: while let Some(escape_prefix) =
-        length_lexicographical_sort(ts.escape_prefixes(mut_sample.positive_words()).collect())
-            .first()
-    {
-        // WARN TODO should find a way to either pass or globally set timeout
-        if time_start.elapsed() >= std::time::Duration::from_secs(60 * 10) {
-            warn!(
-                "task exceeded timeout, aborting with automaton of size {}",
-                ts.size()
-            );
-            return Err(());
-        }
-        let u = escape_prefix[..escape_prefix.len() - 1].to_string();
-        let a = escape_prefix.chars().last().expect("empty escape prefix");
-        // check thresh
-        if (u.len() as isize) - 1 > thresh {
-            // compute default automaton
-            return Ok(acc_type.default_automaton(&sample));
-        }
-        // dbg!(u.len());
-        let source = ts.finite_run(&u).unwrap().reached();
-        for q in ts.state_indices_vec() {
-            // try adding transition
-            ts.add_edge((source, a, Void, q));
-            // continue if consistent
-            let (is_consistent, pos_sets_new, neg_sets_new) =
-                acc_type.consistent(&ts, &mut_sample, pos_sets.clone(), neg_sets.clone());
-            if is_consistent {
-                // update already known infinity sets
-                pos_sets = pos_sets_new;
-                neg_sets = neg_sets_new;
-                mut_sample.remove_non_escaping(&ts);
-                // dbg!(ts.size());
-                // dbg!(pos_sets.len());
-                // dbg!(neg_sets.len());
-                // dbg!(mut_sample.words.len());
-                continue 'outer;
-            } else {
-                ts.remove_edges_from_matching(source, a);
+    let mut current = 0;
+    'outer: while current < ts.size() as u32 {
+        for sym in sample.alphabet.universe() {
+            // WARN TODO should find a way to either pass or globally set timeout
+            if time_start.elapsed() >= std::time::Duration::from_secs(60 * 10) {
+                warn!(
+                    "task exceeded timeout, aborting with automaton of size {}",
+                    ts.size()
+                );
+                return Err(());
             }
+            // check thresh
+            if ts.size() > thresh as usize {
+                // compute default automaton
+                return Ok(acc_type.default_automaton(&sample));
+            }
+            for q in 0..current {
+                // try adding transition
+                ts.add_edge((current, sym, q));
+                // continue if consistent
+                let (is_consistent, pos_sets_new, neg_sets_new) =
+                    acc_type.consistent(&ts, &mut_sample, pos_sets.clone(), neg_sets.clone());
+                if is_consistent {
+                    // update already known infinity sets
+                    pos_sets = pos_sets_new;
+                    neg_sets = neg_sets_new;
+                    mut_sample.remove_non_escaping(&ts);
+                    // dbg!(ts.size());
+                    // dbg!(pos_sets.len());
+                    // dbg!(neg_sets.len());
+                    // dbg!(mut_sample.words.len());
+                    continue 'outer;
+                } else {
+                    ts.remove_edges_from_matching(current, sym);
+                }
+            }
+            // if none consistent add new state
+            let new_state = ts.add_state(Void);
+            ts.add_edge((current, sym, new_state));
         }
-        // if none consistent add new state
-        let new_state = ts.add_state(Void);
-        ts.add_edge((source, a, Void, new_state));
     }
     Ok(acc_type.consistent_automaton(&ts, &mut_sample, pos_sets, neg_sets))
 }

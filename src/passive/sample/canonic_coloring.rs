@@ -21,7 +21,7 @@ mod tests {
     #[ignore]
     fn classification() {
         let (alphabet, sample) = testing_larger_forc_sample();
-        let cong = sample.infer_prefix_congruence();
+        let cong = sample.infer_prefix_congruence().unwrap();
         let split = sample.split(&cong);
         let forc = split.infer_forc();
         let periodic = split.get(0).unwrap().to_periodic_sample();

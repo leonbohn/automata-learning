@@ -1,16 +1,10 @@
 use std::borrow::Borrow;
 
-use automata::{
-    congruence::CongruenceTrigger, output::Mapping, BuchiCondition, Class, HasAlphabet, Map,
-    RightCongruence, Set, Str, Subword, Successor, Symbol, TriggerIterable, Word,
-};
+use automata::prelude::*;
 use itertools::Itertools;
 use tracing::trace;
 
-use crate::{
-    acceptance::AcceptanceError,
-    passive::{FiniteSample, OmegaSample},
-};
+use crate::passive::{FiniteSample, OmegaSample};
 
 use super::{
     ConflictConstraint, Constraint, EscapeSeparabilityConstraint, InducedSeparabilityConstraint,

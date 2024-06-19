@@ -6,18 +6,11 @@ mod separability;
 
 use std::fmt::{Debug, Display};
 
-use automata::{
-    ts::{IntoParts, IntoStates, IntoTransitions},
-    Class, Pair, Predecessor, RightCongruence, Set, Str, Subword, Successor, Symbol, Transformer,
-    TransitionSystem, UltimatelyPeriodicWord, Word,
-};
+use automata::prelude::*;
 use itertools::Itertools;
 use tracing::trace;
 
-use crate::{
-    acceptance::AcceptanceError,
-    passive::{FiniteSample, OmegaSample, Sample},
-};
+use crate::passive::{FiniteSample, OmegaSample, Sample};
 
 pub use myhillnerode::MyhillNerodeConstraint;
 

@@ -171,7 +171,7 @@ impl<A: Alphabet> OmegaSample<A, bool> {
     }
 
     /// Computes the [`RightCongruence`] underlying the sample.
-    pub fn infer_prefix_congruence(&self) -> RightCongruence<A> {
+    pub fn infer_prefix_congruence(&self) -> Result<RightCongruence<A>, ()> {
         dpainf(prefix_consistency_conflicts(self), vec![], true)
     }
 

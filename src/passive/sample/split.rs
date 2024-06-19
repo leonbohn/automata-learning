@@ -116,7 +116,8 @@ impl<'a, A: Alphabet> SplitOmegaSample<'a, A, bool> {
                         vec![],
                         // SeparatesIdempotents::new(split_sample.get(&c).expect("This must exist")),
                         false,
-                    ),
+                    )
+                    .unwrap(),
                 )
             })
             .collect_vec();

@@ -257,7 +257,7 @@ mod tests {
                 (upw!("a"), false),
             ],
         );
-        let cong = sample.infer_prefix_congruence();
+        let cong = sample.infer_prefix_congruence().unwrap();
         let split = sample.split(&cong);
 
         for w in ["b"] {

@@ -9,12 +9,9 @@ pub use state::GlercState;
 
 use std::fmt::Display;
 
-use automata::RightCongruence;
-use automata::Symbol;
+use automata::prelude::*;
 
 use automata::Class;
-
-use self::constraint::Constraint;
 
 /// Represents an intermediate output of the GLERC algorithm.
 #[derive(Eq, Debug, Clone, PartialEq)]

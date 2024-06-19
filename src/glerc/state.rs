@@ -3,9 +3,7 @@ use std::{
     hash::Hash,
 };
 
-use automata::{
-    ts::IntoParts, AcceptanceCondition, Combined, Growable, Shrinkable, Subword, Symbol, Word,
-};
+use automata::prelude::*;
 use tracing::{debug, trace, warn};
 
 use crate::passive::Sample;
