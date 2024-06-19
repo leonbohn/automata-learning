@@ -1,5 +1,6 @@
-use automata::{math::Set, prelude::*, transition_system::path};
+use automata::{math::Set, prelude::*, random, transition_system::path};
 use itertools::Itertools;
+use tracing::{info, warn};
 
 use std::{collections::HashSet, path::Iter};
 
@@ -9,7 +10,12 @@ use super::{consistency::ConsistencyCheck, OmegaSample};
 
 /// gives a deterministic acc_type omega automaton that is consistent with the given sample
 /// implements the sprout passive learning algorithm for omega automata from <https://arxiv.org/pdf/2108.03735.pdf>
-pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_type: A) -> A::Aut {
+pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
+    sample: OmegaSample,
+    acc_type: A,
+) -> Result<A::Aut, ()> {
+    let time_start = std::time::Instant::now();
+
     // make ts with initial state
     let mut ts = Automaton::new_with_initial_color(sample.alphabet().clone(), Void);
 
@@ -19,7 +25,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
         .map(|w| (w.spoke().len(), w.cycle().len()))
         .fold((0, 0), |(a0, a1), (b0, b1)| (a0.max(b0), a1.max(b1)));
     let thresh = (lb + le.pow(2) + 1) as isize;
-    println!("threshold: {}", thresh);
+    info!("starting sprout with threshold {thresh}");
 
     // while there are positive sample words that are escaping
     let mut pos_sets = vec![];
@@ -29,12 +35,20 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
         length_lexicographical_sort(ts.escape_prefixes(mut_sample.positive_words()).collect())
             .first()
     {
+        // WARN TODO should find a way to either pass or globally set timeout
+        if time_start.elapsed() >= std::time::Duration::from_secs(60 * 10) {
+            warn!(
+                "task exceeded timeout, aborting with automaton of size {}",
+                ts.size()
+            );
+            return Err(());
+        }
         let u = escape_prefix[..escape_prefix.len() - 1].to_string();
         let a = escape_prefix.chars().last().expect("empty escape prefix");
         // check thresh
         if (u.len() as isize) - 1 > thresh {
             // compute default automaton
-            return acc_type.default_automaton(&sample);
+            return Ok(acc_type.default_automaton(&sample));
         }
         // dbg!(u.len());
         let source = ts.finite_run(&u).unwrap().reached();
@@ -62,7 +76,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(sample: OmegaSample, acc_ty
         let new_state = ts.add_state(Void);
         ts.add_edge((source, a, Void, new_state));
     }
-    acc_type.consistent_automaton(&ts, &mut_sample, pos_sets, neg_sets)
+    Ok(acc_type.consistent_automaton(&ts, &mut_sample, pos_sets, neg_sets))
 }
 
 /// sort a vector of Strings length lexicographically
@@ -139,7 +153,7 @@ mod tests {
             .default_color(Void)
             .into_dba(0);
 
-        let res = sprout(sample, BuchiCondition);
+        let res = sprout(sample, BuchiCondition).unwrap();
         assert_eq!(res, dba);
     }
 
@@ -173,7 +187,7 @@ mod tests {
             .default_color(Void)
             .into_dba(0);
 
-        let res = sprout(sample, BuchiCondition);
+        let res = sprout(sample, BuchiCondition).unwrap();
         assert_eq!(res, dba);
     }
 
@@ -219,7 +233,7 @@ mod tests {
             .default_color(Void)
             .into_dpa(0);
 
-        let res = sprout(sample, MinEvenParityCondition);
+        let res = sprout(sample, MinEvenParityCondition).unwrap();
         assert_eq!(res, dpa);
     }
 
@@ -249,7 +263,7 @@ mod tests {
             .into_dpa(0);
         dpa.complete_with_colors(Void, 1);
 
-        let res = sprout(sample, MinEvenParityCondition);
+        let res = sprout(sample, MinEvenParityCondition).unwrap();
         assert_eq!(res, dpa);
     }
 }
