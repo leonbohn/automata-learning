@@ -43,7 +43,7 @@ pub mod sprout;
 /// Executes the RPNI algorithm on the given sample. This returns a DFA that is
 /// composed of a right congruence as well as an acceptance condition, which marks
 /// a classes as accepting if it is reached by a positive sample word.
-pub fn dfa_rpni<A: Alphabet>(sample: &FiniteSample<A, bool>) -> DFA<A> {
+pub fn dfa_rpni<A: Alphabet>(sample: &FiniteSample<A>) -> DFA<A> {
     let cong = dpainf::dpainf(sample, vec![], true).unwrap();
     let accepting = sample
         .positive_words()
