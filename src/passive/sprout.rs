@@ -100,23 +100,7 @@ impl OmegaSample {
     {
         // run transition system on sample words and
         // separate in escaping and non-escaping (successful) runs
-        let pos_successful: Vec<_> = self
-            .positive_words()
-            .filter(|word| ts.omega_run(word).is_ok())
-            .cloned()
-            .collect();
-        for w in pos_successful {
-            self.remove(&w);
-        }
-
-        let neg_successful: Vec<_> = self
-            .negative_words()
-            .filter(|word| ts.omega_run(word).is_ok())
-            .cloned()
-            .collect();
-        for w in neg_successful {
-            self.remove(&w);
-        }
+        self.words.retain(|word, _| ts.omega_run(word).is_ok());
     }
 }
 
