@@ -19,7 +19,7 @@ type EdgeSet = Set<(u32, char)>;
 /// required by the sprout algorithm for passively learning omega automata
 pub trait ConsistencyCheck<T> {
     /// the type of the automaton to be returned
-    type Aut;
+    type Aut: TransitionSystem;
     /// Checks if the given transition system is consistent with the sample
     fn consistent(
         &self,
@@ -353,19 +353,18 @@ fn zielonka_path(
 /// Run positive and negative sample words on the given transition system.
 /// If there is a pair of words escaping with the same escape string from the same state, return None.
 /// Otherwise return non-escaping runs of positive and negative example words
-fn to_infinity_sets<T>(ts: T, sample: &OmegaSample) -> Option<[Vec<EdgeSet>; 2]>
+fn successful_runs<T>(ts: T, sample: &OmegaSample) -> Option<[Vec<LassoIn<T>>; 2]>
 where
     T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
     <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
 {
-    let time_start = std::time::Instant::now();
     // run transition system on sample words and
     // separate in escaping and non-escaping (successful) runs
     let (pos_successful, pos_escaping): (Vec<_>, Vec<_>) = sample
         .positive_words()
         .map(|w| (ts.omega_run(w), w))
         .partition_map(|r| match r {
-            (Ok(v), _) => Either::Left(v.into_recurrent_triggers().collect()),
+            (Ok(v), _) => Either::Left(v),
             (Err(path), w) => {
                 let reached = path.reached();
                 let escape_str = w.skip(path.len());
@@ -376,7 +375,7 @@ where
     let mut neg_successful = Vec::default();
     for (output, w) in sample.negative_words().map(|w| (ts.omega_run(w), w)) {
         match output {
-            Ok(v) => neg_successful.push(v.into_recurrent_triggers().collect()),
+            Ok(v) => neg_successful.push(v),
             Err(path) => {
                 let reached = path.reached();
                 let escape_prefix = w.skip(path.len()).reduced();
@@ -386,48 +385,46 @@ where
             }
         }
     }
-    tracing::info!("successful_runs took {}", time_start.elapsed().as_micros());
     Some([pos_successful, neg_successful])
 }
 
-// /// Run positive and negative sample words on the given transition system.
-// /// If there is a pair of words escaping with the same escape string from the same state, return None.
-// /// Otherwise return vector of sets of transitions visited infinitely often
-// /// during the runs of positive and negative example words.
-// fn to_infinity_sets<T>(ts: T, sample: &OmegaSample) -> Option<[Vec<EdgeSet>; 2]>
-// where
-//     T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
-//     <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
-// {
-//     if let Some([pos_successful, neg_successful]) = successful_runs(ts, sample) {
-//         let pos_sets = pos_successful
-//             .into_iter()
-//             .map(|run| {
-//                 run.into_recurrent_transitions()
-//                     .map(|e| {
-//                         let (src, &sym, _, _) = e.into_tuple();
-//                         (src, sym)
-//                     })
-//                     .collect()
-//             })
-//             .collect();
-//         let neg_sets = neg_successful
-//             .into_iter()
-//             .map(|run| {
-//                 run.into_recurrent_transitions()
-//                     .map(|e| {
-//                         let (src, &sym, _, _) = e.into_tuple();
-//                         (src, sym)
-//                     })
-//                     .collect()
-//             })
-//             .collect();
-
-//         Some([pos_sets, neg_sets])
-//     } else {
-//         None
-//     }
-// }
+/// Run positive and negative sample words on the given transition system.
+/// If there is a pair of words escaping with the same escape string from the same state, return None.
+/// Otherwise return vector of sets of transitions visited infinitely often
+/// during the runs of positive and negative example words.
+fn to_infinity_sets<T>(ts: T, sample: &OmegaSample) -> Option<[Vec<EdgeSet>; 2]>
+where
+    T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
+    <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
+{
+    if let Some([pos_successful, neg_successful]) = successful_runs(ts, sample) {
+        let pos_sets = pos_successful
+            .into_iter()
+            .map(|run| {
+                run.into_recurrent_transitions()
+                    .map(|e| {
+                        let (src, &sym, _, _) = e.into_tuple();
+                        (src, sym)
+                    })
+                    .collect()
+            })
+            .collect();
+        let neg_sets = neg_successful
+            .into_iter()
+            .map(|run| {
+                run.into_recurrent_transitions()
+                    .map(|e| {
+                        let (src, &sym, _, _) = e.into_tuple();
+                        (src, sym)
+                    })
+                    .collect()
+            })
+            .collect();
+        Some([pos_sets, neg_sets])
+    } else {
+        None
+    }
+}
 
 #[cfg(test)]
 mod tests {
