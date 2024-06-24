@@ -367,7 +367,7 @@ where
         .map(|w| (ts.omega_run::<_, run::Triggers<_>>(w), w))
         .partition_map(|(r, w)| match r {
             (Successful(v)) => Either::Left(v),
-            (Failed(q, ep)) => Either::Right((q, ep.reduced())),
+            (Failed(q, ep)) => Either::Right((q, ep.suffix())),
         });
 
     let mut neg_successful = Vec::default();
@@ -378,7 +378,7 @@ where
         match output {
             Successful(v) => neg_successful.push(v),
             Failed(q, ep) => {
-                if pos_escaping.contains(&(q, ep.reduced())) {
+                if pos_escaping.contains(&(q, ep.suffix())) {
                     return None;
                 }
             }
@@ -452,6 +452,8 @@ mod tests {
             .with_transitions([(0, 'a', Void, 0)])
             .default_color(Void)
             .into_dts_with_initial(0);
+
+        println!("{:?}", ts2.omega_escape_prefix(upw!("a", "b")));
 
         // build samples
         let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
