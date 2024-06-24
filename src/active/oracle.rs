@@ -144,7 +144,7 @@ impl<A: Alphabet, C: Color> Oracle for MealyOracle<A, C> {
 
     fn output<W: FiniteWord<A::Symbol>>(&self, word: W) -> C {
         self.automaton
-            .map(word)
+            .last_edge_color(word)
             .or(self.default.clone())
             .expect("The oracle must be total!")
     }

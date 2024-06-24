@@ -4,7 +4,7 @@ use automata::{
 use itertools::Itertools;
 use tracing::{error, info, trace, warn};
 
-use std::{collections::HashSet, path::Iter};
+use std::{collections::HashSet, fmt::Debug, path::Iter};
 
 use crate::prefixtree::prefix_tree;
 
@@ -12,22 +12,27 @@ use super::{consistency::ConsistencyCheck, OmegaSample};
 
 #[derive(thiserror::Error)]
 pub enum SproutError<A: ConsistencyCheck<WithInitial<DTS>>> {
-    #[error("the timeout `{0}` was exceeded, bailing with ts of size {}", .1.size())]
-    Timeout(usize, Automaton<CharAlphabet, WithoutCondition, Void, Void>),
+    #[error("timeout was exceeded, bailing with ts of size {}", .0.size())]
+    Timeout(Automaton<CharAlphabet, WithoutCondition, Void, Void>),
     #[error("escape prefix threshold `{0}` exceeded, bailing with ts of size {}", .1.size())]
     Threshold(usize, A::Aut),
 }
 
-pub type SproutResult<A: ConsistencyCheck<WithInitial<DTS>>> = Result<A::Aut, SproutError<A>>;
-
-impl<A: ConsistencyCheck<WithInitial<DTS>>> SproutResult<A> {
-    pub fn unwrap(self) -> A::Aut {
-        match self {
-            SproutResult::Successful(aut) => aut,
-            _ => panic!(),
-        }
+impl<A: ConsistencyCheck<WithInitial<DTS>>> Debug for SproutError<A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                SproutError::Timeout(ts) => "reached timeout".to_string(),
+                SproutError::Threshold(t, ts) => format!("reached threshold {t}"),
+            }
+        )
     }
 }
+
+#[allow(type_alias_bounds)]
+pub type SproutResult<A: ConsistencyCheck<WithInitial<DTS>>> = Result<A::Aut, SproutError<A>>;
 
 /// gives a deterministic acc_type omega automaton that is consistent with the given sample
 /// implements the sprout passive learning algorithm for omega automata from <https://arxiv.org/pdf/2108.03735.pdf>
@@ -52,17 +57,14 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
     let mut pos_sets = vec![];
     let mut neg_sets = vec![];
     let mut mut_sample = sample.clone();
-    'outer: while let Some(escape_prefix) =
-        length_lexicographical_sort(ts.escape_prefixes(mut_sample.positive_words()).collect())
-            .first()
-    {
+    'outer: while let Some(escape_prefix) = ts.escape_prefixes(mut_sample.positive_words()).min() {
         // WARN TODO should find a way to either pass or globally set timeout
         if time_start.elapsed() >= std::time::Duration::from_secs(60 * 30) {
             error!(
                 "task exceeded timeout, aborting with automaton of size {}",
                 ts.size()
             );
-            return SproutResult::Timeout(ts);
+            return Err(SproutError::Timeout(ts));
         }
         // check thresh
         if (escape_prefix.len() as isize) - 2 > thresh {
@@ -71,14 +73,14 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
                 ts.size()
             );
             // compute default automaton
-            return SproutResult::Threshold(acc_type.default_automaton(&sample));
+            return Err(SproutError::Threshold(
+                thresh as usize,
+                acc_type.default_automaton(&sample),
+            ));
         }
 
-        let source = ts
-            .finite_run(&escape_prefix[..escape_prefix.len() - 1])
-            .unwrap()
-            .reached();
-        let sym = escape_prefix.chars().last().unwrap();
+        let source = ts.reached_state_index(&escape_prefix).unwrap();
+        let sym = escape_prefix.escape_symbol();
 
         for q in ts.state_indices_vec() {
             // try adding transition
@@ -105,23 +107,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
         ts.add_edge((source, sym, new_state));
     }
     info!("done with outer iteration, outputting consistent automaton");
-    SproutResult::Successful(acc_type.consistent_automaton(&ts, &mut_sample, pos_sets, neg_sets))
-}
-
-/// sort a vector of Strings length lexicographically
-pub fn length_lexicographical_sort(mut words: Vec<String>) -> Vec<String> {
-    words.sort_by(|a, b| {
-        // Compare by length first
-        let length_comparison = a.len().cmp(&b.len());
-
-        // If lengths are equal, compare lexicographically
-        if length_comparison == std::cmp::Ordering::Equal {
-            a.cmp(b)
-        } else {
-            length_comparison
-        }
-    });
-    words
+    Ok(acc_type.consistent_automaton(&ts, &mut_sample, pos_sets, neg_sets))
 }
 
 impl OmegaSample {
@@ -133,7 +119,10 @@ impl OmegaSample {
     {
         // run transition system on sample words and
         // separate in escaping and non-escaping (successful) runs
-        self.words.retain(|word, _| ts.omega_run(word).is_ok());
+        self.positive
+            .retain(|w| ts.omega_run::<_, run::NoObserver>(w).is_successful());
+        self.negative
+            .retain(|w| ts.omega_run::<_, run::NoObserver>(w).is_successful());
     }
 }
 
@@ -202,24 +191,6 @@ mod tests {
 
         let res = sprout(sample, BuchiCondition).unwrap();
         assert_eq!(res, dba);
-    }
-
-    #[test]
-    fn llex_sort() {
-        assert_eq!(
-            length_lexicographical_sort(vec![
-                String::from("ca"),
-                String::from("ac"),
-                String::from("aaa"),
-                String::from("b")
-            ]),
-            vec![
-                String::from("b"),
-                String::from("ac"),
-                String::from("ca"),
-                String::from("aaa")
-            ]
-        );
     }
 
     #[test]

@@ -350,6 +350,7 @@ fn zielonka_path(
     Some(z_path)
 }
 
+use run::InfiniteRunOutput::*;
 /// Run positive and negative sample words on the given transition system.
 /// If there is a pair of words escaping with the same escape string from the same state, return None.
 /// Otherwise return non-escaping runs of positive and negative example words
@@ -363,24 +364,21 @@ where
     // separate in escaping and non-escaping (successful) runs
     let (pos_successful, pos_escaping): (Vec<_>, Vec<_>) = sample
         .positive_words()
-        .map(|w| (ts.omega_run(w), w))
-        .partition_map(|r| match r {
-            (Ok(v), _) => Either::Left(v.into_recurrent_triggers().collect()),
-            (Err(path), w) => {
-                let reached = path.reached();
-                let escape_str = w.skip(path.len());
-                Either::Right((reached, escape_str.reduced()))
-            }
+        .map(|w| (ts.omega_run::<_, run::Triggers<_>>(w), w))
+        .partition_map(|(r, w)| match r {
+            (Successful(v)) => Either::Left(v),
+            (Failed(q, ep)) => Either::Right((q, ep.reduced())),
         });
 
     let mut neg_successful = Vec::default();
-    for (output, w) in sample.negative_words().map(|w| (ts.omega_run(w), w)) {
+    for (output, w) in sample
+        .negative_words()
+        .map(|w| (ts.omega_run::<_, run::Triggers<_>>(w), w))
+    {
         match output {
-            Ok(v) => neg_successful.push(v.into_recurrent_triggers().collect()),
-            Err(path) => {
-                let reached = path.reached();
-                let escape_prefix = w.skip(path.len()).reduced();
-                if pos_escaping.contains(&(reached, escape_prefix)) {
+            Successful(v) => neg_successful.push(v),
+            Failed(q, ep) => {
+                if pos_escaping.contains(&(q, ep.reduced())) {
                     return None;
                 }
             }
