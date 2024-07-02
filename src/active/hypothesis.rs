@@ -7,23 +7,23 @@ pub trait Hypothesis {
     type StateIndex: IndexType;
 
     fn initial(&self) -> Self::StateIndex;
-    fn reached_index_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+    fn reached_index_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
         input: W,
         source: Self::StateIndex,
     ) -> Self::StateIndex;
-    fn reached_index<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+    fn reached_index<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
         input: W,
     ) -> Self::StateIndex {
         self.reached_index_from(input, self.initial())
     }
-    fn output_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+    fn output_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
         input: W,
         source: Self::StateIndex,
     ) -> Self::Output;
-    fn output<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+    fn output<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
         input: W,
     ) -> Self::Output {
@@ -41,7 +41,7 @@ impl<A: Alphabet, Q: Color, C: Color> Hypothesis for MooreMachine<A, Q, C> {
         Pointed::initial(self)
     }
 
-    fn reached_index_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+    fn reached_index_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
         input: W,
         source: Self::StateIndex,
@@ -50,7 +50,7 @@ impl<A: Alphabet, Q: Color, C: Color> Hypothesis for MooreMachine<A, Q, C> {
             .expect("Hypothesis must be complete")
     }
 
-    fn output_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+    fn output_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
         input: W,
         source: Self::StateIndex,
@@ -71,7 +71,7 @@ impl<A: Alphabet, Q: Color, C: Color> Hypothesis for MealyMachine<A, Q, C> {
         Pointed::initial(self)
     }
 
-    fn reached_index_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+    fn reached_index_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
         input: W,
         source: Self::StateIndex,
@@ -80,7 +80,7 @@ impl<A: Alphabet, Q: Color, C: Color> Hypothesis for MealyMachine<A, Q, C> {
             .expect("Hypothesis must be complete")
     }
 
-    fn output_from<W: FiniteWord<<Self::Alphabet as Alphabet>::Symbol>>(
+    fn output_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
         input: W,
         source: Self::StateIndex,

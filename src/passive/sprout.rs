@@ -58,6 +58,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
     let mut neg_sets = vec![];
     let mut mut_sample = sample.clone();
     'outer: while let Some(escape_prefix) = ts.escape_prefixes(mut_sample.positive_words()).min() {
+        trace!("found escape prefix {escape_prefix:?}");
         // WARN TODO should find a way to either pass or globally set timeout
         if time_start.elapsed() >= std::time::Duration::from_secs(60 * 30) {
             error!(
@@ -106,7 +107,11 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
         let new_state = ts.add_state(Void);
         ts.add_edge((source, sym, new_state));
     }
-    info!("done with outer iteration, outputting consistent automaton");
+
+    info!(
+        "completed sprout algorithm after {} microseconds",
+        time_start.elapsed().as_micros()
+    );
     Ok(acc_type.consistent_automaton(&ts, &mut_sample, pos_sets, neg_sets))
 }
 
@@ -135,7 +140,9 @@ mod tests {
     use automata::prelude::*;
 
     #[test]
-    fn sprout_buchi() {
+    fn sprout_buchi_successful() {
+        logging::init();
+
         let sigma = CharAlphabet::of_size(2);
 
         // build sample
@@ -155,7 +162,18 @@ mod tests {
             .default_color(Void)
             .into_dba(0);
 
-        let res = sprout(sample, BuchiCondition).unwrap();
+        let res = sprout(sample.clone(), BuchiCondition).unwrap();
+        println!("{res:?}");
+
+        for pos in sample.positive_words() {
+            assert!(dba.accepts(pos));
+            assert!(res.accepts(pos));
+        }
+        for neg in sample.negative_words() {
+            assert!(!dba.accepts(neg));
+            assert!(!res.accepts(neg));
+        }
+
         assert_eq!(res, dba);
     }
 

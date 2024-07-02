@@ -111,11 +111,11 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
 }
 
 pub trait ClassifiesIdempotents<A: Alphabet> {
-    fn classify(&self, class: impl FiniteWord<A::Symbol>) -> Option<bool>;
+    fn classify(&self, class: impl FiniteWord<Symbol = A::Symbol>) -> Option<bool>;
 }
 
 impl<A: Alphabet, CI: ClassifiesIdempotents<A>> ClassifiesIdempotents<A> for &CI {
-    fn classify(&self, class: impl FiniteWord<<A as Alphabet>::Symbol>) -> Option<bool> {
+    fn classify(&self, class: impl FiniteWord<Symbol = <A as Alphabet>::Symbol>) -> Option<bool> {
         CI::classify(self, class)
     }
 }

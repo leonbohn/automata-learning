@@ -27,7 +27,7 @@ mod canonic_coloring;
 /// Represents a finite sample, which is a pair of positive and negative instances.
 #[derive(Clone, Eq, PartialEq)]
 #[allow(missing_docs)]
-pub struct Sample<A: Alphabet, W: Word<A::Symbol> + Hash> {
+pub struct Sample<A: Alphabet, W: Word<Symbol = A::Symbol> + Hash> {
     pub alphabet: A,
     pub positive: math::Set<W>,
     pub negative: math::Set<W>,
@@ -48,9 +48,9 @@ impl<A: Alphabet> OmegaSample<A> {
     }
 }
 
-impl<A: Alphabet, W: Word<A::Symbol>> Sample<A, W> {}
+impl<A: Alphabet, W: Word<Symbol = A::Symbol>> Sample<A, W> {}
 
-impl<A: Alphabet, W: Word<A::Symbol>> Sample<A, W> {
+impl<A: Alphabet, W: Word<Symbol = A::Symbol>> Sample<A, W> {
     const FINITE: bool = W::FINITE;
 
     pub fn count_words(&self) -> usize {
@@ -225,7 +225,7 @@ impl<A: Alphabet> FiniteSample<A> {
 impl<A, W> Debug for Sample<A, W>
 where
     A: Alphabet + Debug,
-    W: Word<A::Symbol> + Debug,
+    W: Word<Symbol = A::Symbol> + Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
