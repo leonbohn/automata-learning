@@ -78,8 +78,6 @@ where
         pos_sets: Vec<EdgeSet>,
         neg_sets: Vec<EdgeSet>,
     ) -> Self::Aut {
-        dbg!(&pos_sets);
-        dbg!(&neg_sets);
         // check consistency
         assert!(self.consistent(ts, sample, pos_sets, neg_sets.clone()).0);
 
@@ -88,26 +86,21 @@ where
         let [_, mut neg_sets_new] =
             to_infinity_sets(ts, sample).expect("ts cannot be consistent with sample");
         neg_sets_new.extend(neg_sets);
-        dbg!(&neg_sets_new);
 
         let neg_union: EdgeSet = neg_sets_new.iter().flatten().cloned().collect();
-        dbg!(&neg_union);
 
         let all_transitions: EdgeSet = ts
             .state_indices()
             .cartesian_product(ts.alphabet().universe())
             .collect();
-        dbg!(&all_transitions);
 
         let accepting: EdgeSet = all_transitions.difference(&neg_union).cloned().collect();
-        dbg!(&accepting);
 
         // make DBA
         let mut dba = ts
             .map_edge_colors_full(move |a, b, _, _| accepting.contains(&(a, *b)))
             .erase_state_colors()
             .collect_dba();
-        dbg!(&dba);
 
         // complete with sink state
         dba.complete_with_colors(Void, false);

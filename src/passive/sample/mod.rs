@@ -230,17 +230,10 @@ where
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Sample with alphabet {:?} and {} words",
-            self.alphabet,
-            self.count_words()
-        )?;
-        for pos in self.positive_words() {
-            write!(f, "\n+ {pos:?}")?;
-        }
-        for neg in self.negative_words() {
-            write!(f, "\n+ {neg:?}")?;
-        }
-        Ok(())
+            "+ {}\n- {}",
+            self.positive_words().map(|x| format!("{x:?}")).join(", "),
+            self.negative_words().map(|x| format!("{x:?}")).join(", "),
+        )
     }
 }
 

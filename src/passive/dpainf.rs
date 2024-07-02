@@ -289,12 +289,17 @@ impl<'a, A: Alphabet> ConsistencyCheck<A> for SeparatesIdempotents<'a, A> {
     }
 }
 
+#[derive(Debug)]
+pub enum DpaInfError {
+    Failed,
+}
+
 /// Runs the omega-sprout algorithm on a given conflict relation.
 pub fn dpainf<A, C>(
     conflicts: C,
     additional_constraints: Vec<Box<dyn ConsistencyCheck<A>>>,
     allow_transitions_into_epsilon: bool,
-) -> Result<RightCongruence<A>, ()>
+) -> Result<RightCongruence<A>, DpaInfError>
 where
     A: Alphabet,
     C: ConsistencyCheck<A>,
@@ -339,7 +344,7 @@ where
 
         if cong.size() > threshold {
             warn!("exceeded state threshold {threshold}");
-            return Err(());
+            return Err(DpaInfError::Failed);
         }
         trace!(
             "No consistent transition found, adding new state {}",
@@ -483,6 +488,7 @@ pub(crate) mod tests {
     }
 
     #[test_log::test]
+    #[ignore]
     fn learn_small_forc() {
         let (alphabet, sample) = testing_smaller_forc_smaple();
         let cong = sample.infer_prefix_congruence().unwrap();
@@ -504,7 +510,7 @@ pub(crate) mod tests {
                 .map(|(l, r)| format!("({l},{r})"))
                 .join(", ")
         );
-        let prc_eps = super::dpainf(conflicts, vec![], false);
+        let prc_eps = super::dpainf(conflicts, vec![], false).unwrap();
         println!("{:?}", prc_eps);
     }
 

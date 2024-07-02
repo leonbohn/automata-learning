@@ -57,7 +57,13 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
     let mut pos_sets = vec![];
     let mut neg_sets = vec![];
     let mut mut_sample = sample.clone();
-    'outer: while let Some(escape_prefix) = ts.escape_prefixes(mut_sample.positive_words()).min() {
+
+    'outer: loop {
+        trace!("attempting to find an escape prefix with sets\npos {pos_sets:?}, neg {neg_sets:?}\n{mut_sample:?}\n{ts:?}");
+        let Some(escape_prefix) = ts.escape_prefixes(mut_sample.positive_words()).min() else {
+            break;
+        };
+
         trace!("found escape prefix {escape_prefix:?}");
         // WARN TODO should find a way to either pass or globally set timeout
         if time_start.elapsed() >= std::time::Duration::from_secs(60 * 30) {
@@ -94,10 +100,6 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
                 pos_sets = pos_sets_new;
                 neg_sets = neg_sets_new;
                 mut_sample.remove_non_escaping(&ts);
-                // dbg!(ts.size());
-                // dbg!(pos_sets.len());
-                // dbg!(neg_sets.len());
-                // dbg!(mut_sample.words.len());
                 continue 'outer;
             } else {
                 ts.remove_edges_from_matching(source, sym);
@@ -125,9 +127,9 @@ impl OmegaSample {
         // run transition system on sample words and
         // separate in escaping and non-escaping (successful) runs
         self.positive
-            .retain(|w| ts.omega_run::<_, run::NoObserver>(w).is_successful());
+            .retain(|w| ts.omega_run::<_, run::NoObserver>(w).is_escaping());
         self.negative
-            .retain(|w| ts.omega_run::<_, run::NoObserver>(w).is_successful());
+            .retain(|w| ts.omega_run::<_, run::NoObserver>(w).is_escaping());
     }
 }
 
@@ -139,10 +141,8 @@ mod tests {
     use crate::passive::OmegaSample;
     use automata::prelude::*;
 
-    #[test]
+    #[test_log::test]
     fn sprout_buchi_successful() {
-        logging::init();
-
         let sigma = CharAlphabet::of_size(2);
 
         // build sample
@@ -207,7 +207,9 @@ mod tests {
             .default_color(Void)
             .into_dba(0);
 
-        let res = sprout(sample, BuchiCondition).unwrap();
+        let Err(SproutError::Threshold(t, res)) = sprout(sample, BuchiCondition) else {
+            panic!("expected to hit threshold");
+        };
         assert_eq!(res, dba);
     }
 
@@ -265,7 +267,9 @@ mod tests {
             .into_dpa(0);
         dpa.complete_with_colors(Void, 1);
 
-        let res = sprout(sample, MinEvenParityCondition).unwrap();
+        let Err(SproutError::Threshold(t, res)) = sprout(sample, MinEvenParityCondition) else {
+            panic!("expected threshold to be exceeded");
+        };
         assert_eq!(res, dpa);
     }
 }

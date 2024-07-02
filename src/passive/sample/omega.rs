@@ -8,7 +8,8 @@ use word::ReducedParseError;
 
 use crate::passive::{
     dpainf::{
-        dpainf, iteration_consistency_conflicts, prefix_consistency_conflicts, SeparatesIdempotents,
+        dpainf, iteration_consistency_conflicts, prefix_consistency_conflicts, DpaInfError,
+        SeparatesIdempotents,
     },
     ClassOmegaSample, Sample,
 };
@@ -169,7 +170,7 @@ impl<A: Alphabet> OmegaSample<A> {
     }
 
     /// Computes the [`RightCongruence`] underlying the sample.
-    pub fn infer_prefix_congruence(&self) -> Result<RightCongruence<A>, ()> {
+    pub fn infer_prefix_congruence(&self) -> Result<RightCongruence<A>, DpaInfError> {
         dpainf(prefix_consistency_conflicts(self), vec![], true)
     }
 }
