@@ -60,7 +60,8 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
 
     'outer: loop {
         trace!("attempting to find an escape prefix with sets\npos {pos_sets:?}, neg {neg_sets:?}\n{mut_sample:?}\n{ts:?}");
-        let Some(escape_prefix) = ts.escape_prefixes(mut_sample.positive_words()).min() else {
+        let Some(escape_prefix) = ts.omega_escape_prefixes(mut_sample.positive_words()).min()
+        else {
             break;
         };
 
