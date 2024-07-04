@@ -261,7 +261,7 @@ impl<A: Alphabet> OmegaSample<A> {
         );
         let initial = cong.initial();
         // take self as is for epsilon
-        let mut split = math::Map::default();
+        let mut split = math::OrderedMap::default();
         split.insert(
             initial,
             ClassOmegaSample::new(cong, Class::epsilon(), self.clone()),

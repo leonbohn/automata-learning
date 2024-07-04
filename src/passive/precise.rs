@@ -162,7 +162,7 @@ impl<const N: usize> PState<N> {
 pub struct PreciseDPA<A: Alphabet, const N: usize = 8> {
     states: Vec<PState<N>>,
     cong: RightCongruence<A>,
-    expressions: math::Map<A::Symbol, A::Expression>,
+    expressions: math::OrderedMap<A::Symbol, A::Expression>,
     /// Nat -> class -> DFA
     dfas: Vec<[DFA<A>; N]>,
 }
@@ -219,7 +219,7 @@ impl<'a, A: Alphabet, const N: usize> PreciseDPATransition<'a, A, N> {
 #[derive(Debug, Clone)]
 pub struct PreciseDPAEdgesFrom<'a, A: Alphabet, const N: usize> {
     dpa: &'a PreciseDPA<A, N>,
-    expressions: &'a math::Map<A::Symbol, A::Expression>,
+    expressions: &'a math::OrderedMap<A::Symbol, A::Expression>,
     state: PState<N>,
     it: A::Universe<'a>,
 }

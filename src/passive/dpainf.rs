@@ -42,11 +42,11 @@ impl<A: Alphabet, CC: ConsistencyCheck<A>> ConsistencyCheck<A> for &CC {
 
 impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A> {
     fn consistent(&self, cong: &RightCongruence<A>) -> bool {
-        let positive_indices: math::Set<_> = self
+        let positive_indices: math::OrderedSet<_> = self
             .positive_words()
             .filter_map(|w| cong.reached_state_index(w))
             .collect();
-        let negative_indices: math::Set<_> = self
+        let negative_indices: math::OrderedSet<_> = self
             .negative_words()
             .filter_map(|w| cong.reached_state_index(w))
             .collect();
@@ -66,7 +66,7 @@ impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A> {
 #[derive(Clone)]
 pub struct ConflictRelation<A: Alphabet> {
     dfas: [RightCongruence<A>; 2],
-    conflicts: math::Set<(StateIndex, StateIndex)>,
+    conflicts: math::OrderedSet<(StateIndex, StateIndex)>,
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
@@ -158,7 +158,7 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
         .intersection(&looping_words)
         .collect_dfa();
 
-    let mut conflicts = math::Set::default();
+    let mut conflicts = math::OrderedSet::default();
     let mut queue = VecDeque::from_iter(
         left_pta
             .accepting_states()

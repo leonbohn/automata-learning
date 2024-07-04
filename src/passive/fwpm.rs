@@ -12,7 +12,7 @@ use super::precise::PreciseDPA;
 #[derive(Clone)]
 pub struct FWPM<A: Alphabet> {
     leading: RightCongruence<A>,
-    pm: math::Map<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
+    pm: math::OrderedMap<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
 }
 
 impl<A: Alphabet> FWPM<A> {
@@ -20,7 +20,7 @@ impl<A: Alphabet> FWPM<A> {
     pub fn empty<O: ToOwned<Owned = RightCongruence<A>>>(leading: O) -> Self {
         Self {
             leading: leading.to_owned(),
-            pm: math::Map::default(),
+            pm: math::OrderedMap::default(),
         }
     }
 
@@ -64,7 +64,7 @@ impl<A: Alphabet> FWPM<A> {
     /// with a priority mapping. Ensures that the each class has a priority mapping.
     pub fn new(
         leading: RightCongruence<A>,
-        pm: math::Map<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
+        pm: math::OrderedMap<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
     ) -> Self {
         assert_eq!(
             leading.size(),

@@ -1,5 +1,5 @@
 use automata::{
-    automaton::WithoutCondition, math::Set, prelude::*, random, transition_system::path,
+    automaton::WithoutCondition, math::OrderedSet, prelude::*, random, transition_system::path,
 };
 use itertools::Itertools;
 use tracing::{error, info, trace, warn};

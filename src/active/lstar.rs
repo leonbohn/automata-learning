@@ -45,14 +45,14 @@ pub struct LStar<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> {
     // the alphabet of what we are learning
     alphabet: D::Alphabet,
     // a mapping containing all queries that have been posed so far, together with their output
-    queries: RefCell<math::Map<Word<D>, D::Color>>,
+    queries: RefCell<math::OrderedMap<Word<D>, D::Color>>,
     // the minimal access words forming the base states
     base: Vec<Word<D>>,
     // all known experiments
     experiments: Vec<Experiment<SymbolOf<D>>>,
     // mapping from input word to a bitset, where the i-th entry gives the value for
     // the output of concatenating input word and i-th experiment
-    table: math::Map<Word<D>, Vec<D::Color>>,
+    table: math::OrderedMap<Word<D>, Vec<D::Color>>,
     // the oracle
     oracle: T,
     observations: ObservationTable<SymbolOf<D>, T::Output>,
@@ -67,9 +67,9 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
                 D::mandatory_experiments(&alphabet),
             ),
             alphabet,
-            queries: RefCell::new(math::Map::default()),
+            queries: RefCell::new(math::OrderedMap::default()),
             base: vec![vec![]],
-            table: math::Map::default(),
+            table: math::OrderedMap::default(),
             oracle,
         }
     }
@@ -153,7 +153,7 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
             );
 
             if !todo.is_empty() {
-                let mut queries = math::Set::default();
+                let mut queries = math::OrderedSet::default();
                 for r in todo {
                     self.base.push(r.clone());
                     queries.insert(r.clone());

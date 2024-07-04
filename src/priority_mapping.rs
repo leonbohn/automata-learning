@@ -143,7 +143,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
                 (Ok(_), _) => unreachable!(),
             });
 
-        let mut seen = math::Set::default();
+        let mut seen = math::OrderedSet::default();
         'outer: loop {
             if dag.masked_is_empty(&seen) {
                 break 'outer;

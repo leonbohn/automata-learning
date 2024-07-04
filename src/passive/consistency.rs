@@ -4,7 +4,7 @@ use std::iter;
 use std::ops::Not;
 
 use automata::{
-    math::Set,
+    math::OrderedSet,
     prelude::*,
     transition_system::path::{self, LassoIn},
 };
@@ -13,7 +13,7 @@ use crate::prefixtree::prefix_tree;
 
 use super::OmegaSample;
 
-type EdgeSet = Set<(u32, char)>;
+type EdgeSet = OrderedSet<(u32, char)>;
 
 /// Used to define consistency checks on various types of omega acceptance conditions
 /// required by the sprout algorithm for passively learning omega automata
