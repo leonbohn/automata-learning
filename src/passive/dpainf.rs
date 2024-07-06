@@ -5,7 +5,7 @@ use std::{
 
 use automata::{prelude::*, transition_system::operations::ProductIndex};
 use itertools::Itertools;
-use tracing::{trace, warn};
+use tracing::{error, trace, warn};
 
 use crate::{
     passive::{ClassOmegaSample, FiniteSample, OmegaSample, Sample, SplitOmegaSample},
@@ -299,8 +299,11 @@ impl<'a, A: Alphabet> ConsistencyCheck<A> for SeparatesIdempotents<'a, A> {
 }
 
 #[derive(Debug)]
-pub enum DpaInfError {
-    Failed,
+pub enum DpaInfError<A: Alphabet> {
+    /// The threshold has been exceeded, returns constructed right congruence and threshold value
+    Threshold(RightCongruence<A>, usize),
+    /// The given timeout has been exceeded, returns right congruence that has been constructed thus far
+    Timeout(RightCongruence<A>),
 }
 
 /// Runs the omega-sprout algorithm on a given conflict relation.
@@ -308,7 +311,8 @@ pub fn dpainf<A, C>(
     conflicts: C,
     additional_constraints: Vec<Box<dyn ConsistencyCheck<A>>>,
     allow_transitions_into_epsilon: bool,
-) -> Result<RightCongruence<A>, DpaInfError>
+    timeout_seconds: Option<u64>,
+) -> Result<RightCongruence<A>, DpaInfError<A>>
 where
     A: Alphabet,
     C: ConsistencyCheck<A>,
@@ -324,7 +328,15 @@ where
         .universe()
         .map(|sym| (initial, sym))
         .collect();
+
+    let time_start = std::time::Instant::now();
+    let timeout_seconds = timeout_seconds.unwrap_or(u64::MAX);
     'outer: while let Some((source, sym)) = queue.pop_front() {
+        if time_start.elapsed().as_secs() >= timeout_seconds {
+            error!("exceeded timeout, returning right congruence built so far");
+            return Err(DpaInfError::Timeout(cong));
+        }
+
         for target in (0..cong.size()) {
             let target = ScalarIndexType::from_usize(target);
             if !allow_transitions_into_epsilon && target == initial {
@@ -352,9 +364,10 @@ where
         }
 
         if cong.size() > threshold {
-            warn!("exceeded state threshold {threshold}");
-            return Err(DpaInfError::Failed);
+            error!("exceeded threshold on number of states {threshold}");
+            return Err(DpaInfError::Threshold(cong, threshold));
         }
+
         trace!(
             "No consistent transition found, adding new state {}",
             cong.size()
@@ -518,7 +531,7 @@ pub(crate) mod tests {
                 .map(|(l, r)| format!("({l},{r})"))
                 .join(", ")
         );
-        let prc_eps = super::dpainf(conflicts, vec![], false).unwrap();
+        let prc_eps = super::dpainf(conflicts, vec![], false, None).unwrap();
         println!("{:?}", prc_eps);
     }
 

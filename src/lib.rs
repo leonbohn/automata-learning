@@ -6,9 +6,6 @@
 #[macro_use]
 pub mod passive;
 
-/// Greedily LEarn Right Congruence algorithm, an algorithm that infers a
-/// right congruence relation from a consistency function.
-// pub mod glerc;
 use automata::prelude::*;
 
 // /// Deals with active learning algorithms such as L*.

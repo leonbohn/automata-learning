@@ -117,8 +117,9 @@ impl<'a, A: Alphabet> SplitOmegaSample<'a, A> {
                         vec![],
                         // SeparatesIdempotents::new(split_sample.get(&c).expect("This must exist")),
                         false,
+                        None,
                     )
-                    .unwrap(),
+                    .expect("Unable to infer a FORC!"),
                 )
             })
             .collect_vec();
