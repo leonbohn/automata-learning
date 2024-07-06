@@ -8,7 +8,7 @@ use itertools::Itertools;
 use tracing::{error, trace, warn};
 
 use crate::{
-    passive::{ClassOmegaSample, FiniteSample, OmegaSample, Sample, SplitOmegaSample},
+    passive::{ClassOmegaSample, FiniteSample, OmegaSample, SetSample, SplitOmegaSample},
     prefixtree::prefix_tree,
 };
 
@@ -386,10 +386,10 @@ pub(crate) mod tests {
     use automata::prelude::*;
     use itertools::Itertools;
 
-    use crate::passive::{dpainf::ConflictRelation, sample::OmegaSample, Sample};
+    use crate::passive::{dpainf::ConflictRelation, sample::OmegaSample, SetSample};
 
     pub fn inf_aba_sample() -> (CharAlphabet, OmegaSample<CharAlphabet>) {
-        let Ok(sample) = OmegaSample::try_from(
+        let Ok(sample) = OmegaSample::try_from_str(
             r#"omega
             alphabet: a,b
             positive:
@@ -417,7 +417,7 @@ pub(crate) mod tests {
     }
 
     pub fn testing_larger_forc_sample() -> (CharAlphabet, OmegaSample<CharAlphabet>) {
-        let Ok(sample) = OmegaSample::try_from(
+        let Ok(sample) = OmegaSample::try_from_str(
             r#"omega
         alphabet: a,b
         positive:
@@ -477,7 +477,7 @@ pub(crate) mod tests {
         let alphabet = CharAlphabet::of_size(3);
         (
             alphabet.clone(),
-            Sample::new_omega_from_pos_neg(
+            SetSample::new_omega_from_pos_neg(
                 alphabet,
                 [
                     upw!("a"),

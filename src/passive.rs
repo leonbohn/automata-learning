@@ -12,7 +12,7 @@ use tracing::{debug, trace};
 /// negative example words.
 #[macro_use]
 pub mod sample;
-pub use sample::{ClassOmegaSample, PeriodicOmegaSample, Sample, SplitOmegaSample};
+pub use sample::{ClassOmegaSample, PeriodicOmegaSample, SetSample, SplitOmegaSample};
 
 use crate::{
     active::{LStar, MealyOracle},

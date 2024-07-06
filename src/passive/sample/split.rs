@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use crate::passive::dpainf::{dpainf, iteration_consistency_conflicts};
 
-use super::{OmegaSample, Sample};
+use super::{OmegaSample, SetSample};
 
 /// An [`OmegaSample`] restricted/split onto one [`Class`] of a [`RightCongruence`].
 #[derive(Clone)]
@@ -56,7 +56,7 @@ impl<'a, A: Alphabet> ClassOmegaSample<'a, A> {
         Self {
             congruence,
             class,
-            sample: Sample {
+            sample: SetSample {
                 alphabet,
                 positive: math::Set::default(),
                 negative: math::Set::default(),

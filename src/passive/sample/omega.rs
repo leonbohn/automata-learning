@@ -1,68 +1,57 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, io::BufRead};
 
+use alphabet::SimpleAlphabet;
 use automata::prelude::*;
 use either::Either;
 use itertools::Itertools;
+use thiserror::Error;
 use tracing::{debug, trace};
 use word::ReducedParseError;
 
-use crate::passive::{
-    dpainf::{
-        dpainf, iteration_consistency_conflicts, prefix_consistency_conflicts, DpaInfError,
-        SeparatesIdempotents,
+use crate::{
+    passive::{
+        dpainf::{
+            dpainf, iteration_consistency_conflicts, prefix_consistency_conflicts, DpaInfError,
+            SeparatesIdempotents,
+        },
+        ClassOmegaSample, SetSample,
     },
-    ClassOmegaSample, Sample,
+    prefixtree::prefix_tree,
 };
 
 use super::{OmegaSample, SplitOmegaSample};
 
 /// Abstracts the types of errors that can occur when parsing an `OmegaSample` from a string.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Error)]
 #[allow(missing_docs)]
 pub enum OmegaSampleParseError {
+    #[error("missing sample header")]
     MissingHeader,
+    #[error("missing sample alphabet")]
     MissingAlphabet,
+    #[error("alphabet directive not followed by `:`")]
     MissingDelimiter,
-    MalformedAlphabetSymbol,
+    #[error("encountered malformed alphabet symbol `{0}`")]
+    MalformedAlphabetSymbol(String),
+    #[error("sample is inconsistent: `{0}` is classified as positive and negative")]
     Inconsistent(String),
+    #[error("alphabet is malformed, missing `positive:` or `negative:` block")]
     MalformedSample,
+    #[error("could not parse given omega word, reason: {0}")]
     OmegaWordParseError(ReducedParseError),
 }
 
-impl std::fmt::Display for OmegaSampleParseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OmegaSampleParseError::MissingHeader => write!(f, "Missing header"),
-            OmegaSampleParseError::MissingAlphabet => write!(f, "Missing alphabet"),
-            OmegaSampleParseError::MissingDelimiter => write!(f, "Missing delimiter"),
-            OmegaSampleParseError::MalformedAlphabetSymbol => write!(f, "Malformed alphabet"),
-            OmegaSampleParseError::MalformedSample => write!(f, "Malformed sample"),
-            OmegaSampleParseError::OmegaWordParseError(err) => {
-                write!(f, "Could not parse omega-word: {}", err)
-            }
-            OmegaSampleParseError::Inconsistent(word) => write!(
-                f,
-                "Inconsistent sample, {word} is both positive and negative"
-            ),
-        }
+impl<A: Alphabet> OmegaSample<A> {
+    pub fn prefix_tree(&self) -> RightCongruence<A> {
+        prefix_tree(self.alphabet().clone(), self.words())
+            .erase_state_colors()
+            .collect_right_congruence()
     }
 }
-
-impl TryFrom<&str> for OmegaSample<CharAlphabet> {
-    type Error = OmegaSampleParseError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::try_from(value.lines().map(|s| s.to_string()).collect_vec())
-    }
-}
-
-impl TryFrom<Vec<String>> for OmegaSample<CharAlphabet> {
-    type Error = OmegaSampleParseError;
-
-    fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
-        let mut lines = value
-            .into_iter()
-            .filter(|line| !line.trim().is_empty() && !line.starts_with('#'));
+impl OmegaSample<CharAlphabet> {
+    pub fn try_from_lines<I: Iterator<Item = String>>(
+        mut lines: I,
+    ) -> Result<Self, OmegaSampleParseError> {
         if lines.next().unwrap_or_default().trim() != "omega" {
             return Err(OmegaSampleParseError::MissingHeader);
         }
@@ -75,21 +64,25 @@ impl TryFrom<Vec<String>> for OmegaSample<CharAlphabet> {
             })
             .map(|(header, symbols)| {
                 if header.trim() == "alphabet" {
-                    symbols.split(',').try_fold(Vec::new(), |mut acc, x| {
-                        let sym = x.trim();
-                        if sym.len() != 1 {
-                            Err(OmegaSampleParseError::MalformedAlphabetSymbol)
-                        } else {
-                            acc.push(sym.chars().next().unwrap());
-                            Ok(acc)
-                        }
-                    })
+                    symbols
+                        .split(',')
+                        .try_fold(Vec::new(), |mut acc, x| {
+                            let sym = x.trim();
+                            if sym.len() != 1 {
+                                Err(OmegaSampleParseError::MalformedAlphabetSymbol(
+                                    sym.to_string(),
+                                ))
+                            } else {
+                                acc.push(sym.chars().next().unwrap());
+                                Ok(acc)
+                            }
+                        })
+                        .map(|acc| CharAlphabet::new(acc))
                 } else {
                     Err(OmegaSampleParseError::MissingAlphabet)
                 }
             })
-            .ok_or(OmegaSampleParseError::MissingDelimiter)??
-            .into();
+            .ok_or(OmegaSampleParseError::MissingDelimiter)??;
 
         if lines.next().unwrap_or_default().trim() != "positive:" {
             return Err(OmegaSampleParseError::MalformedSample);
@@ -119,13 +112,29 @@ impl TryFrom<Vec<String>> for OmegaSample<CharAlphabet> {
                 .map_err(OmegaSampleParseError::OmegaWordParseError)?;
             if let Some(old_classification) = words.insert(parsed, false) {
                 if old_classification {
-                    return Err(OmegaSampleParseError::Inconsistent(word));
+                    return Err(OmegaSampleParseError::Inconsistent(word.to_string()));
                 }
                 debug!("Duplicate negative word found");
             };
         }
 
-        Ok(Sample::new_omega(alphabet, words))
+        Ok(SetSample::new_omega(alphabet, words))
+    }
+
+    pub fn try_from_str(input: &str) -> Result<Self, OmegaSampleParseError> {
+        Self::try_from_lines(input.lines().map(|l| l.to_string()))
+    }
+
+    pub fn try_from_read<R: BufRead>(mut read: R) -> Result<Self, OmegaSampleParseError> {
+        let mut lines = read.lines().filter_map(|line| {
+            let line = line.expect("unable to parse line!").trim().to_string();
+            if !line.is_empty() && !line.starts_with('#') {
+                None
+            } else {
+                Some(line.to_string())
+            }
+        });
+        Self::try_from_lines(lines)
     }
 }
 

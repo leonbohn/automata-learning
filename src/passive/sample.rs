@@ -20,14 +20,41 @@ pub use split::{ClassOmegaSample, SplitOmegaSample};
 mod omega;
 pub use omega::{OmegaSampleParseError, PeriodicOmegaSample};
 
+mod finite;
+pub use finite::FiniteSampleParseError;
+
 mod canonic_coloring;
 
-// mod characterize;
+pub trait Sample<A: Alphabet> {
+    type Word: Word<Symbol = A::Symbol>;
+    type PositiveIter<'this>: Iterator<Item = &'this Self::Word>
+    where
+        Self: 'this,
+        Self::Word: 'this;
+    type NegativeIter<'this>: Iterator<Item = &'this Self::Word>
+    where
+        Self: 'this,
+        Self::Word: 'this;
+    const FINITE: bool;
+    fn positive(&self) -> Self::PositiveIter<'_>;
+    fn negative(&self) -> Self::NegativeIter<'_>;
+    fn words(&self) -> itertools::Interleave<Self::PositiveIter<'_>, Self::NegativeIter<'_>> {
+        self.positive().interleave(self.negative())
+    }
+    fn classified_words<'a>(&'a self) -> impl Iterator<Item = (&'a Self::Word, bool)>
+    where
+        Self::Word: 'a,
+    {
+        self.positive()
+            .map(|w| (w, true))
+            .interleave(self.negative().map(|w| (w, false)))
+    }
+}
 
 /// Represents a finite sample, which is a pair of positive and negative instances.
 #[derive(Clone, Eq, PartialEq)]
 #[allow(missing_docs)]
-pub struct Sample<A: Alphabet, W: Word<Symbol = A::Symbol> + Hash> {
+pub struct SetSample<A: Alphabet, W: Word<Symbol = A::Symbol> + Hash> {
     pub alphabet: A,
     pub positive: math::Set<W>,
     pub negative: math::Set<W>,
@@ -35,24 +62,14 @@ pub struct Sample<A: Alphabet, W: Word<Symbol = A::Symbol> + Hash> {
 
 /// Type alias for samples over the alphabet `A`, containing finite words which are classified with color `C`,
 /// which defaults to `bool`.
-pub type FiniteSample<A = CharAlphabet> = Sample<A, Vec<<A as Alphabet>::Symbol>>;
+pub type FiniteSample<A = CharAlphabet> = SetSample<A, Vec<<A as Alphabet>::Symbol>>;
 /// Type alias for samples over alphabet `A` which contain infinite/omega words that are classified with `C`,
 /// which defaults to `bool`.
-pub type OmegaSample<A = CharAlphabet> = Sample<A, ReducedOmegaWord<<A as Alphabet>::Symbol>>;
+pub type OmegaSample<A = CharAlphabet> = SetSample<A, ReducedOmegaWord<<A as Alphabet>::Symbol>>;
 
-impl<A: Alphabet> OmegaSample<A> {
-    pub fn prefix_tree(&self) -> RightCongruence<A> {
-        prefix_tree(self.alphabet().clone(), self.words())
-            .erase_state_colors()
-            .collect_right_congruence()
-    }
-}
+impl<A: Alphabet, W: Word<Symbol = A::Symbol>> SetSample<A, W> {}
 
-impl<A: Alphabet, W: Word<Symbol = A::Symbol>> Sample<A, W> {}
-
-impl<A: Alphabet, W: Word<Symbol = A::Symbol>> Sample<A, W> {
-    const FINITE: bool = W::FINITE;
-
+impl<A: Alphabet, W: Word<Symbol = A::Symbol>> SetSample<A, W> {
     pub fn count_words(&self) -> usize {
         self.positive.len() + self.negative.len()
     }
@@ -84,31 +101,31 @@ impl<A: Alphabet, W: Word<Symbol = A::Symbol>> Sample<A, W> {
         }
     }
 
-    pub fn into_joined(self, other: Sample<A, W>) -> Sample<A, W> {
-        let Sample {
+    pub fn into_joined(self, other: SetSample<A, W>) -> SetSample<A, W> {
+        let SetSample {
             alphabet,
             mut positive,
             mut negative,
         } = self;
         positive.extend(other.positive);
         negative.extend(other.negative);
-        Sample {
+        SetSample {
             positive,
             negative,
             alphabet,
         }
     }
 
-    pub fn append(&mut self, other: Sample<A, W>) {
+    pub fn append(&mut self, other: SetSample<A, W>) {
         self.positive.extend(other.positive);
         self.negative.extend(other.negative);
     }
 
-    pub fn as_joined(&self, other: &Sample<A, W>) -> Sample<A, W>
+    pub fn as_joined(&self, other: &SetSample<A, W>) -> SetSample<A, W>
     where
         W: Clone,
     {
-        Sample {
+        SetSample {
             alphabet: self.alphabet.clone(),
             positive: self
                 .positive
@@ -195,34 +212,7 @@ impl<A: Alphabet, W: Word<Symbol = A::Symbol>> Sample<A, W> {
     }
 }
 
-impl<A: Alphabet> FiniteSample<A> {
-    /// Create a new sample of finite words from the given alphabet and iterator over annotated words. The sample is given
-    /// as an iterator over its symbols. The words are given as an iterator of pairs (word, color).
-    pub fn new_finite<I: IntoIterator<Item = A::Symbol>, J: IntoIterator<Item = (I, bool)>>(
-        alphabet: A,
-        words: J,
-    ) -> Self {
-        let (positive, negative) = words.into_iter().partition_map(|(w, c)| {
-            if c {
-                either::Either::Left(w.into_iter().collect())
-            } else {
-                either::Either::Right(w.into_iter().collect())
-            }
-        });
-        Self {
-            alphabet,
-            positive,
-            negative,
-        }
-    }
-
-    /// Returns the maximum length of any finite word in the sample. Gives back `0` if no word exists in the sample.
-    pub fn max_word_len(&self) -> usize {
-        self.words().map(|w| w.len()).max().unwrap_or(0)
-    }
-}
-
-impl<A, W> Debug for Sample<A, W>
+impl<A, W> Debug for SetSample<A, W>
 where
     A: Alphabet + Debug,
     W: Word<Symbol = A::Symbol> + Debug,
@@ -243,7 +233,7 @@ mod tests {
     use itertools::Itertools;
     use tracing::info;
 
-    use crate::passive::Sample;
+    use crate::passive::SetSample;
 
     use super::ReducedOmegaWord;
 
@@ -261,7 +251,7 @@ mod tests {
         ab
         abb"#;
 
-        let sample = match Sample::try_from(sample_str) {
+        let sample = match SetSample::try_from_str(sample_str) {
             Ok(s) => s,
             Err(e) => panic!("Error parsing sample: {:?}", e),
         };
@@ -276,7 +266,7 @@ mod tests {
     fn to_periodic_sample() {
         let alphabet = CharAlphabet::of_size(2);
         // represents congruence e ~ b ~ aa ~\~ a ~ ab
-        let sample = Sample::new_omega_from_pos_neg(
+        let sample = SetSample::new_omega_from_pos_neg(
             alphabet,
             [upw!("ab", "b"), upw!("a", "b"), upw!("bbbbbb")],
             [upw!("aa")],
@@ -297,7 +287,7 @@ mod tests {
     fn split_up_sample() {
         let alphabet = CharAlphabet::of_size(2);
         // represents congruence e ~ b ~ aa ~\~ a ~ ab
-        let sample = Sample::new_omega(
+        let sample = SetSample::new_omega(
             alphabet.clone(),
             vec![
                 (upw!("b"), true),

@@ -1,6 +1,6 @@
 use automata::{prelude::*, transition_system::operations::MapStateColor};
 
-use crate::passive::Sample;
+use crate::passive::SetSample;
 
 use super::{Hypothesis, LStarHypothesis};
 
@@ -46,7 +46,7 @@ where
 /// sample for all words in the sample.
 #[derive(Debug, Clone)]
 pub struct SampleOracle<A: Alphabet, W: Word<Symbol = A::Symbol>> {
-    sample: Sample<A, W>,
+    sample: SetSample<A, W>,
     default: bool,
 }
 
@@ -86,15 +86,15 @@ impl<A: Alphabet, W: Word<Symbol = A::Symbol>> SampleOracle<A, W> {
 
 impl<A: Alphabet, W: FiniteWord<Symbol = A::Symbol>> SampleOracle<A, W> {
     /// Creates a new instance of a [`SampleOracle`] with the given sample and default color.
-    pub fn new(sample: Sample<A, W>, default: bool) -> Self {
+    pub fn new(sample: SetSample<A, W>, default: bool) -> Self {
         Self { sample, default }
     }
 }
 
-impl<A: Alphabet, W: FiniteWord<Symbol = A::Symbol>> From<(Sample<A, W>, bool)>
+impl<A: Alphabet, W: FiniteWord<Symbol = A::Symbol>> From<(SetSample<A, W>, bool)>
     for SampleOracle<A, W>
 {
-    fn from((value, default): (Sample<A, W>, bool)) -> Self {
+    fn from((value, default): (SetSample<A, W>, bool)) -> Self {
         Self::new(value, default)
     }
 }
