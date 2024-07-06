@@ -523,16 +523,13 @@ pub(crate) mod tests {
     }
 
     #[test]
-    #[ignore]
     fn learn_larger_forc() {
-        // let (alphabet, sample) = testing_larger_forc_sample();
-        // let cong = sample.infer_right_congruence();
-        // let split = sample.split(&cong);
-        // let forc = split.infer_forc();
-        // let prc_eps = forc.prc(Class::epsilon()).unwrap();
-        // println!("{}", prc_eps.dot_representation());
-        // assert_eq!(prc_eps.size(), 13);
-        todo!()
+        let (alphabet, sample) = testing_larger_forc_sample();
+        let cong = sample.infer_prefix_congruence().unwrap();
+        let split = sample.split(&cong);
+        let forc = split.infer_forc();
+        let prc_eps = forc.prc(0).unwrap();
+        assert_eq!(prc_eps.size(), 13);
     }
 
     // #[test]
