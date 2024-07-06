@@ -189,19 +189,26 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
         }
     }
 
-    todo!()
-    // let (left, left_map) = Sproutable::sprout_from_ts_with_bijection(left_pta);
-    // debug_assert!(left.size() == left_pta.size());
-    // let (right, right_map) = right_pta.build_right_congruence();
-    // debug_assert!(right.size() == right_pta.size());
+    let (left, left_initial) = left_pta.into_dts_preserving_and_initial();
+    let (right, right_initial) = right_pta.into_dts_preserving_and_initial();
 
-    // ConflictRelation {
-    //     dfas: [left, right],
-    //     conflicts: conflicts
-    //         .into_iter()
-    //         .map(|(l, r)| (left_map[&l], right_map[&r]))
-    //         .collect(),
-    // }
+    let conflicts: BTreeSet<_> = conflicts
+        .into_iter()
+        .map(|(l, r)| (left.old_to_new(l).unwrap(), right.old_to_new(r).unwrap()))
+        .collect();
+
+    ConflictRelation {
+        dfas: [
+            left.erase_colors()
+                .with_initial(left_initial)
+                .into_right_congruence(),
+            right
+                .erase_colors()
+                .with_initial(right_initial)
+                .into_right_congruence(),
+        ],
+        conflicts,
+    }
 }
 
 /// Computes a conflict relation encoding prefix consistency. For more details on how this works, see
@@ -215,37 +222,39 @@ pub fn prefix_consistency_conflicts<A: Alphabet, S: std::borrow::Borrow<OmegaSam
 
     let dfa = (&left_pta).ts_product(&right_pta);
 
-    todo!()
-    // let sccs = dfa.sccs();
-    // let states_with_infinite_run: Vec<(usize, usize)> = sccs
-    //     .iter()
-    //     .filter_map(|scc| {
-    //         if !scc.is_transient() {
-    //             Some(scc.clone().into_iter().map(Into::into))
-    //         } else {
-    //             None
-    //         }
-    //     })
-    //     .flatten()
-    //     .collect();
+    let sccs = dfa.sccs();
+    let states_with_infinite_run: Vec<_> = sccs
+        .iter()
+        .filter_map(|scc| {
+            if !scc.is_transient() {
+                Some(scc.clone().into_iter().map(Into::into))
+            } else {
+                None
+            }
+        })
+        .flatten()
+        .collect();
 
-    // let mut conflicts = math::Set::default();
-    // for ProductIndex(l, r) in dfa.state_indices() {
-    //     let reachable = dfa
-    //         .reachable_state_indices_from(ProductIndex(l, r))
-    //         .collect_vec();
-    //     if reachable
-    //         .iter()
-    //         .any(|ProductIndex(p, q)| states_with_infinite_run.contains(&(*p, *q)))
-    //     {
-    //         conflicts.insert((l, r));
-    //     }
-    // }
+    let mut conflicts = math::OrderedSet::default();
+    for ProductIndex(l, r) in dfa.state_indices() {
+        let reachable = dfa
+            .reachable_state_indices_from(ProductIndex(l, r))
+            .collect_vec();
+        if reachable
+            .iter()
+            .any(|ProductIndex(p, q)| states_with_infinite_run.contains(&(*p, *q)))
+        {
+            conflicts.insert((l, r));
+        }
+    }
 
-    // ConflictRelation {
-    //     dfas: [left_pta, right_pta],
-    //     conflicts,
-    // }
+    ConflictRelation {
+        dfas: [
+            left_pta.erase_state_colors().into_right_congruence(),
+            right_pta.erase_state_colors().into_right_congruence(),
+        ],
+        conflicts,
+    }
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for () {
@@ -316,14 +325,14 @@ where
         .map(|sym| (initial, sym))
         .collect();
     'outer: while let Some((source, sym)) = queue.pop_front() {
-        // FIXME: This is a hack to avoid lifetime issues, find a better way...
-        // TODO: figure out if this is the best way, we just take the upper bound on the number and assume that all states have sequential ids...
         for target in (0..cong.size()) {
             let target = ScalarIndexType::from_usize(target);
             if !allow_transitions_into_epsilon && target == initial {
                 continue;
             }
-            let old_edge = cong.add_edge((source, cong.make_expression(sym), target));
+            assert!(cong
+                .add_edge((source, cong.make_expression(sym), target))
+                .is_none());
 
             if conflicts.consistent(&cong)
                 && additional_constraints.iter().all(|c| c.consistent(&cong))
@@ -488,7 +497,6 @@ pub(crate) mod tests {
     }
 
     #[test_log::test]
-    #[ignore]
     fn learn_small_forc() {
         let (alphabet, sample) = testing_smaller_forc_smaple();
         let cong = sample.infer_prefix_congruence().unwrap();
