@@ -4,8 +4,8 @@ use dag::Dag;
 use owo_colors::OwoColorize;
 
 use automata::{
+    dot::{DotStateAttribute, Dottable},
     prelude::*,
-    transition_system::dot::{DotStateAttribute, Dottable},
 };
 
 /// A family of weak priority mappings (FWPM) is a pair (C, M) where C is a

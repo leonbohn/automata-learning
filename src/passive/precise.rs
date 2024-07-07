@@ -1,11 +1,9 @@
 use std::fmt::Debug;
 
 use automata::{
+    dot::{DotStateAttribute, DotTransitionAttribute},
     prelude::*,
-    transition_system::{
-        dot::{DotStateAttribute, DotTransitionAttribute},
-        Reachable,
-    },
+    Dottable,
 };
 use itertools::Itertools;
 use tracing::{debug, info};
@@ -276,7 +274,7 @@ impl<A: Alphabet, const N: usize> TransitionSystem for PreciseDPA<A, N> {
     type EdgesFromIter<'this> = PreciseDPAEdgesFrom<'this, A, N>
     where
         Self: 'this;
-    type StateIndices<'this> = Reachable<'this, Self, false> where Self: 'this;
+    type StateIndices<'this> = automata::transition_system::Reachable<'this, Self, false> where Self: 'this;
 
     type Alphabet = A;
 
@@ -485,7 +483,7 @@ impl<A: Alphabet, const N: usize> Dottable for PreciseDPA<A, N> {
     fn dot_state_attributes(
         &self,
         idx: Self::StateIndex,
-    ) -> impl IntoIterator<Item = automata::transition_system::dot::DotStateAttribute>
+    ) -> impl IntoIterator<Item = automata::dot::DotStateAttribute>
     where
         (String, StateColor<Self>): Show,
     {
@@ -498,7 +496,7 @@ impl<A: Alphabet, const N: usize> Dottable for PreciseDPA<A, N> {
     fn dot_transition_attributes<'a>(
         &'a self,
         t: Self::EdgeRef<'a>,
-    ) -> impl IntoIterator<Item = automata::transition_system::dot::DotTransitionAttribute> {
+    ) -> impl IntoIterator<Item = automata::dot::DotTransitionAttribute> {
         [DotTransitionAttribute::Label(format!(
             "{}|{:?}",
             t.expression().show(),
