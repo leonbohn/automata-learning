@@ -81,6 +81,16 @@ impl<A: Alphabet> FWPM<A> {
 
 impl<A: Alphabet> Debug for FWPM<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(f, "\nleading right congruence\n{:?}", self.leading);
+        let names = self.leading.minimal_representatives();
+        for (i, prc) in self.pms() {
+            write!(
+                f,
+                "\nprogress right congruence {i} for class {:?}\n{:?}",
+                names.get_by_left(&i).unwrap(),
+                prc
+            )?;
+        }
+        Ok(())
     }
 }

@@ -4,6 +4,18 @@ use std::hash::Hash;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Experiment<S>(pub(super) Vec<S>);
 
+impl<S> Experiment<S> {
+    pub fn empty() -> Self {
+        Self(vec![])
+    }
+    pub fn is_letter(&self, letter: S) -> bool
+    where
+        S: Symbol,
+    {
+        &self.0 == &[letter]
+    }
+}
+
 impl<S: Symbol> FiniteWord for Experiment<S> {
     type Symbols<'this> = std::iter::Cloned<std::slice::Iter<'this, S>>
     where

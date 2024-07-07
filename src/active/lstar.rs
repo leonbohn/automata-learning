@@ -6,59 +6,32 @@ use itertools::Itertools;
 use tracing::{debug, info, trace};
 use word::Concat;
 
-use super::{oracle::Oracle, Experiment, ObservationTable};
+use super::{oracle::Oracle, Experiment, Hypothesis, ObservationTable};
 
-const ITERATION_THRESHOLD: usize = if cfg!(debug_assertions) { 300 } else { 200000 };
-
-pub trait LStarHypothesis: Deterministic + Sproutable + Pointed {
-    type Color: Color;
-
-    fn transform(&self, word: &[SymbolOf<Self>]) -> Self::Color;
-
-    fn from_transition_system(
-        ts: DTS<Self::Alphabet, Self::StateColor, Self::EdgeColor>,
-        initial: StateIndex,
-    ) -> Self;
-    fn give_state_color(
-        mr: &[SymbolOf<Self>],
-        experiments: &Experiments<Self>,
-        row: &[Self::Color],
-    ) -> Self::StateColor;
-
-    fn give_transition_color(
-        mr: &[SymbolOf<Self>],
-        a: SymbolOf<Self>,
-        experiments: &Experiments<Self>,
-        row: &[Self::Color],
-    ) -> Self::EdgeColor;
-
-    fn mandatory_experiments(
-        alphabet: &Self::Alphabet,
-    ) -> impl IntoIterator<Item = Experiment<SymbolOf<Self>>>;
-}
+const ITERATION_THRESHOLD: usize = if cfg!(debug_assertions) { 3 } else { 200000 };
 
 type Word<D> = Vec<SymbolOf<D>>;
 pub type Experiments<D> = Vec<Experiment<SymbolOf<D>>>;
 
 /// An implementation of the L* algorithm.
-pub struct LStar<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> {
+pub struct LStar<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> {
     // the alphabet of what we are learning
     alphabet: D::Alphabet,
     // a mapping containing all queries that have been posed so far, together with their output
-    queries: RefCell<math::OrderedMap<Word<D>, D::Color>>,
+    queries: RefCell<math::OrderedMap<Word<D>, D::Output>>,
     // the minimal access words forming the base states
     base: Vec<Word<D>>,
     // all known experiments
     experiments: Vec<Experiment<SymbolOf<D>>>,
     // mapping from input word to a bitset, where the i-th entry gives the value for
     // the output of concatenating input word and i-th experiment
-    table: math::OrderedMap<Word<D>, Vec<D::Color>>,
+    table: math::OrderedMap<Word<D>, Vec<D::Output>>,
     // the oracle
     oracle: T,
     observations: ObservationTable<SymbolOf<D>, T::Output>,
 }
 
-impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> LStar<D, T> {
+impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar<D, T> {
     pub fn new(alphabet: D::Alphabet, oracle: T) -> Self {
         Self {
             experiments: D::mandatory_experiments(&alphabet).into_iter().collect(),
@@ -74,7 +47,7 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
         }
     }
 
-    fn output(&self, w: &Word<D>) -> D::Color {
+    fn output(&self, w: &Word<D>) -> D::Output {
         if !self.queries.borrow().contains_key(w) {
             let c = self.oracle.output(w);
             assert!(self.queries.borrow_mut().insert(w.to_owned(), c).is_none());
@@ -88,16 +61,10 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
 
         for (n, mr) in self.one_letter_extensions().enumerate() {
             let stored_experiment_count = self.table.get(&mr).map(|r| r.len()).unwrap_or(0);
-            trace!("Have stored {stored_experiment_count} out of {experiment_count} experiments for {}", mr.as_string());
             if stored_experiment_count < experiment_count {
                 for i in stored_experiment_count..experiment_count {
                     let concat = Concat(&mr, &self.experiments[i]).collect_vec();
                     let output = self.output(&concat).clone();
-                    trace!(
-                        "Adding update that {} maps to {:?}",
-                        concat.as_string(),
-                        output
-                    );
                     updates.push((mr.clone(), i, output));
                 }
             } else {
@@ -165,22 +132,23 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
 
             let hypothesis = self.hypothesis();
 
-            // if let Err((counterexample, color)) = self.oracle.equivalence(&hypothesis) {
-            //     assert!(hypothesis.transform(&counterexample) != color);
-            //     self.process_counterexample(counterexample, color);
-            //     continue 'outer;
-            // }
-            todo!();
-
-            let duration = start.elapsed().as_millis();
-            info!("Execution of LStar took {duration}ms");
-            return hypothesis;
+            let Err((witness, expected_color)) = self.oracle.equivalence(&hypothesis) else {
+                let duration = start.elapsed().as_millis();
+                info!("Execution of LStar took {duration}ms");
+                return hypothesis;
+            };
+            assert!(hypothesis.output(&witness) != expected_color);
+            self.process_counterexample(witness, expected_color);
         }
 
+        let hyp = self.hypothesis();
+        hyp.collect_mealy().display_rendered();
+        std::thread::sleep(std::time::Duration::from_millis(1000));
         panic!("Iteration threshold exceeded!")
     }
 
-    fn process_counterexample(&mut self, word: Word<D>, color: D::Color) {
+    fn process_counterexample(&mut self, word: Word<D>, color: D::Output) {
+        trace!("Processing counterexample {}", word.as_string());
         for i in 0..(word.len()) {
             let suffix = Experiment(word[i..].to_vec());
             assert!(!suffix.is_empty());
@@ -201,10 +169,6 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
         )
     }
 
-    fn edge_color(&self, mr: &Word<D>, sym: SymbolOf<D>) -> D::EdgeColor {
-        D::give_transition_color(mr, sym, &self.experiments, self.table.get(mr).unwrap())
-    }
-
     fn hypothesis(&self) -> D {
         let start = std::time::Instant::now();
 
@@ -223,12 +187,28 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
 
         for (mr, i) in &state_map {
             for a in self.alphabet.universe() {
-                let color = self.edge_color(mr, a);
                 let obs = self
                     .table
                     .get(&Concat(mr, [a]).into_vec())
                     .expect("Can only work if table is closed!");
-                let target = observations.get(obs).unwrap();
+
+                let Some(target) = observations.get(obs) else {
+                    panic!(
+                        "could not find target for {:?} ({mr:?} on symbol {a:?}) in table\n{:?}\n{:?}",
+                        Concat(mr, [a]).into_vec(),
+                        self,
+                        self.table
+                    );
+                };
+
+                let color = D::give_transition_color(
+                    mr,
+                    a,
+                    target,
+                    &self.experiments,
+                    self.table.get(*mr).unwrap(),
+                    self.table.get(*target).unwrap(),
+                );
 
                 let added = ts.add_edge((
                     *i,
@@ -236,7 +216,7 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
                     color,
                     *state_map.get(target).unwrap(),
                 ));
-                assert!(added.is_some());
+                assert!(added.is_none());
             }
         }
 
@@ -304,7 +284,7 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
     fn rows_to_promote(&self) -> math::Set<Word<D>> {
         let start = std::time::Instant::now();
 
-        let known = math::Set::from_iter(self.base.iter().map(|b| {
+        let mut known = math::Set::from_iter(self.base.iter().map(|b| {
             self.table.get(b).unwrap_or_else(|| {
                 panic!(
                     "Experiment {} must be present",
@@ -312,14 +292,12 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
                 )
             })
         }));
-        let mut seen = math::Set::default();
+        trace!("start promotion search with known rows: {known:?}");
         let mut out = math::Set::default();
 
-        for word in self.one_letter_extensions() {
-            trace!("Considering one letter extension {}", word.as_string());
-            let seq = self.table.get(&word).unwrap();
-            if !known.contains(seq) && seen.insert(seq) {
-                out.insert(word);
+        for (word, seq) in self.table.iter() {
+            if known.insert(seq) {
+                out.insert(word.clone());
             }
         }
 
@@ -331,7 +309,7 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Color>> L
     }
 }
 
-impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for LStar<D, T> {
+impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for LStar<D, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut builder = tabled::builder::Builder::default();
         let mut header = vec!["MR".to_string()];
@@ -340,15 +318,14 @@ impl<D: LStarHypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for 
             header.push(e.as_string());
         }
         builder.push_record(header);
-
-        for (i, mr) in self.base.iter().enumerate() {
-            let mut row = vec![mr.as_string()];
-            for color in self
-                .table
-                .get(mr)
-                .unwrap_or_else(|| panic!("No table entry for {}", mr.as_string()))
-            {
-                row.push(format!("{:?}", color));
+        for (mr, out) in &self.table {
+            let mut row = vec![if self.base.contains(mr) {
+                owo_colors::OwoColorize::blue(&mr.as_string()).to_string()
+            } else {
+                mr.as_string()
+            }];
+            for e in out {
+                row.push(format!("{:?}", e));
             }
             builder.push_record(row);
         }

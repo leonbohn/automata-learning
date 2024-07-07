@@ -1,8 +1,12 @@
+use std::cell::RefCell;
+
 use automata::{prelude::*, transition_system::operations::MapStateColor};
+use math::Set;
+use tracing::trace;
 
 use crate::passive::SetSample;
 
-use super::{Hypothesis, LStarHypothesis};
+use super::Hypothesis;
 
 pub type Counterexample<A, O> = (Vec<<A as Alphabet>::Symbol>, O);
 
@@ -26,7 +30,7 @@ pub trait Oracle {
 
     fn equivalence<H>(
         &self,
-        hypothesis: H,
+        hypothesis: &H,
     ) -> Result<(), Counterexample<Self::Alphabet, Self::Output>>
     where
         H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>;
@@ -64,7 +68,7 @@ impl<A: Alphabet, X: FiniteWord<Symbol = A::Symbol>> Oracle for SampleOracle<A, 
 
     fn equivalence<H>(
         &self,
-        hypothesis: H,
+        hypothesis: &H,
     ) -> Result<(), Counterexample<Self::Alphabet, Self::Output>>
     where
         H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>,
@@ -130,12 +134,21 @@ impl<A: Alphabet> Oracle for DFAOracle<A> {
 
     fn equivalence<H>(
         &self,
-        hypothesis: H,
+        hypothesis: &H,
     ) -> Result<(), Counterexample<Self::Alphabet, Self::Output>>
     where
         H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>,
     {
-        todo!()
+        for mr in (&self.automaton)
+            .ts_product(hypothesis)
+            .minimal_representatives()
+        {
+            match (self.automaton.accepts(&mr), hypothesis.output(&mr)) {
+                (b, bb) if b != bb => return Err((mr.to_vec(), b)),
+                _ => (),
+            }
+        }
+        Ok(())
     }
 }
 
@@ -144,9 +157,27 @@ impl<A: Alphabet> Oracle for DFAOracle<A> {
 pub struct MealyOracle<A: Alphabet, C: Color = Int> {
     automaton: MealyMachine<A, Void, C>,
     default: Option<C>,
+    missed: RefCell<Set<Vec<A::Symbol>>>,
 }
 
-impl<A: Alphabet, C: Color> Oracle for MealyOracle<A, C> {
+impl<A: Alphabet, C: Color> MealyOracle<A, C> {
+    /// Creates a new [`MealyOracle`] based on an instance of [`MealyMachine`].
+    pub fn new(
+        automaton: impl Congruence<Alphabet = A, EdgeColor = C>,
+        default: Option<C>,
+    ) -> Self {
+        Self {
+            automaton: automaton.erase_state_colors().collect_mealy(),
+            default,
+            missed: RefCell::new(Set::default()),
+        }
+    }
+    pub fn alphabet(&self) -> &A {
+        self.automaton.alphabet()
+    }
+}
+
+impl<A: Alphabet, C: Color + Ord> Oracle for MealyOracle<A, C> {
     type Alphabet = A;
     type Output = C;
 
@@ -159,32 +190,35 @@ impl<A: Alphabet, C: Color> Oracle for MealyOracle<A, C> {
 
     fn equivalence<H>(
         &self,
-        hypothesis: H,
+        hypothesis: &H,
     ) -> Result<(), Counterexample<Self::Alphabet, Self::Output>>
     where
         H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>,
     {
-        todo!()
+        for mr in (&self.automaton)
+            .ts_product(hypothesis)
+            .minimal_transition_representatives()
+        {
+            let Some(expected) = self.automaton.transform(&mr) else {
+                continue;
+            };
+            // .unwrap_or_else(|| {
+            //     let Some(default) = &self.default else {
+            //         panic!("Oracle must be total or provide a default!")
+            //     };
+            // self.missed.borrow_mut().insert(mr.clone());
+            // trace!("returning default for {mr:?}");
+            // default.clone()
+            // });
+            let output = hypothesis.output(&mr);
+            if output != expected {
+                return Err((mr.to_vec(), expected));
+            }
+        }
+        Ok(())
     }
 
     fn alphabet(&self) -> &A {
-        self.automaton.alphabet()
-    }
-}
-
-impl<A: Alphabet, C: Color> MealyOracle<A, C> {
-    /// Creates a new [`MealyOracle`] based on an instance of [`MealyMachine`].
-    pub fn new(
-        automaton: impl Congruence<Alphabet = A, EdgeColor = C>,
-        default: Option<C>,
-    ) -> Self {
-        Self {
-            automaton: automaton.erase_state_colors().collect_mealy(),
-            default,
-        }
-    }
-
-    pub fn alphabet(&self) -> &A {
         self.automaton.alphabet()
     }
 }
@@ -197,7 +231,7 @@ pub struct MooreOracle<D> {
 
 impl<D: Congruence> Oracle for MooreOracle<IntoMooreMachine<D>>
 where
-    StateColor<D>: Color + Default,
+    StateColor<D>: Color + Default + Ord,
 {
     type Alphabet = D::Alphabet;
     type Output = StateColor<D>;
@@ -210,17 +244,33 @@ where
         &self,
         word: W,
     ) -> Self::Output {
-        todo!()
+        self.automaton
+            .reached_state_color(word)
+            .expect("underlying transition system of Moore oracle must be complete")
     }
 
     fn equivalence<H>(
         &self,
-        hypothesis: H,
+        hypothesis: &H,
     ) -> Result<(), Counterexample<Self::Alphabet, Self::Output>>
     where
         H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>,
     {
-        todo!()
+        for mr in (&self.automaton)
+            .ts_product(hypothesis)
+            .minimal_representatives()
+        {
+            match (
+                self.automaton
+                    .transform(&mr)
+                    .expect("source automaton must be complete"),
+                hypothesis.output(&mr),
+            ) {
+                (c, cc) if c != cc => return Err((mr.to_vec(), c)),
+                _ => (),
+            }
+        }
+        Ok(())
     }
 }
 
@@ -243,8 +293,7 @@ mod tests {
 
     use super::MealyOracle;
 
-    #[test]
-    #[ignore]
+    #[test_log::test]
     fn mealy_al() {
         let target = DTS::builder()
             .with_transitions([
@@ -258,9 +307,8 @@ mod tests {
             .into_mealy(0);
         let oracle = MealyOracle::new(target, Some(0));
         let alphabet = oracle.alphabet().clone();
-        // let mut learner = LStar::for_mealy(alphabet, oracle);
-        // let mm = learner.infer();
-        // assert_eq!(mm.size(), 2);
-        todo!()
+        let mut learner = LStar::new(alphabet, oracle);
+        let mm: MealyMachine = learner.infer();
+        assert_eq!(mm.size(), 2);
     }
 }

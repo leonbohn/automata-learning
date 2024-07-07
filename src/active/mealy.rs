@@ -1,6 +1,6 @@
 use automata::prelude::*;
 
-use super::{Experiment, LStarHypothesis};
+use super::Experiment;
 
 impl<A: Alphabet, C: Color + Default> LStarHypothesis for MooreMachine<A, C> {
     type Color = C;

@@ -8,7 +8,7 @@ use automata::{
     },
 };
 use itertools::Itertools;
-use tracing::{info, trace};
+use tracing::{debug, info};
 
 use super::fwpm::FWPM;
 
@@ -281,7 +281,6 @@ impl<A: Alphabet, const N: usize> TransitionSystem for PreciseDPA<A, N> {
     type Alphabet = A;
 
     fn contains_state_index(&self, index: Self::StateIndex) -> bool {
-        tracing::warn!("called contains_state_index");
         true
     }
 
@@ -376,7 +375,6 @@ impl<A: Alphabet, const N: usize> PreciseDPA<A, N> {
     /// Given a [`PState`] and a symbol, returns the index of the least accepting DFA (which is
     /// the priority of the corresponding edge) and the successor [`PState`].
     pub fn take_precise_transition(&self, q: &PState<N>, a: A::Symbol) -> (Int, PState<N>) {
-        trace!("Taking precise transition from {} on {}", q, a.show());
         let d = self
             .cong()
             .successor_index(q.class(), a)
@@ -416,8 +414,6 @@ impl<A: Alphabet, const N: usize> PreciseDPA<A, N> {
                 }
             }),
         );
-
-        trace!("Reaches state {reached_pstate}, outputs {least_accepting}");
 
         (
             least_accepting
@@ -463,7 +459,7 @@ impl<A: Alphabet, const N: usize> From<FWPM<A>> for PreciseDPA<A, N> {
             prc_dfas.insert(idx as usize, array_dfas);
         }
 
-        info!(
+        debug!(
             "Building precise DPA with {N} priorities took {} microseconds",
             start.elapsed().as_micros()
         );
@@ -502,14 +498,11 @@ impl<A: Alphabet, const N: usize> Dottable for PreciseDPA<A, N> {
     fn dot_transition_attributes<'a>(
         &'a self,
         t: Self::EdgeRef<'a>,
-    ) -> impl IntoIterator<Item = automata::transition_system::dot::DotTransitionAttribute>
-    where
-        (&'a EdgeExpression<Self>, EdgeColor<Self>): Show,
-    {
+    ) -> impl IntoIterator<Item = automata::transition_system::dot::DotTransitionAttribute> {
         [DotTransitionAttribute::Label(format!(
-            "{}|{}",
+            "{}|{:?}",
             t.expression().show(),
-            t.color().show(),
+            t.color(),
         ))]
     }
 }

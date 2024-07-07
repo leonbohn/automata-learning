@@ -122,7 +122,7 @@ impl<A: Alphabet, CI: ClassifiesIdempotents<A>> ClassifiesIdempotents<A> for &CI
 
 impl<A: Alphabet> Debug for AnnotatedCongruence<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(f, "{:?}", self.0)
     }
 }
 

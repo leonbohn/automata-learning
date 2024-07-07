@@ -62,7 +62,6 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
                         .cloned()
                         .chain(std::iter::once(sym))
                         .collect_vec();
-                    trace!("Adding state {:?}", new_access);
                     let successor = tree.add_state(new_access.clone());
                     tree.add_edge((state, alphabet.make_expression(sym), successor));
                     queue.push_back((successor, new_access, new_words.into_iter().collect()));

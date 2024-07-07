@@ -106,25 +106,25 @@ pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet>) -> DPA {
     let precise = infer_precise_dpa(sample);
     let pta = sample.prefix_tree().erase_state_colors();
 
-    let prod = pta
-        .ts_product(precise)
-        .map_edge_colors(|(_, c)| c)
+    let prod = precise
+        .ts_product(pta)
+        .map_edge_colors(|(c, _)| c)
         .erase_state_colors();
     let (completed, initial) = prod.trim_collect_pointed();
 
     //now we use the completed thing to learn a MealyMachine from which we can then build the DPA
     let mm = completed.with_initial(initial).collect_mealy();
+
     let alphabet = mm.alphabet().clone();
     let oracle = MealyOracle::new(mm, Some(0));
 
     let start = std::time::Instant::now();
-    todo!()
-    // let learned = LStar::for_mealy(alphabet, oracle).infer();
-    // debug!(
-    //     "Learning representation of DPA with LStar took {}ms",
-    //     start.elapsed().as_millis()
-    // );
-    // learned.collect_dpa()
+    let learned: MealyMachine = LStar::new(alphabet, oracle).infer();
+    debug!(
+        "Learning representation of DPA with LStar took {}ms",
+        start.elapsed().as_millis()
+    );
+    learned.collect_dpa()
 }
 
 fn characterize_dpa(dpa: DPA) -> OmegaSample {
@@ -143,18 +143,19 @@ mod tests {
     use super::{sample, OmegaSample};
 
     #[test_log::test]
-    #[ignore]
-    fn infer_precise_dpa_inf_aa() {
+    fn infer_precise_dpa_with_al_inf_aa() {
         let alphabet = CharAlphabet::of_size(3);
         let sample = OmegaSample::new_omega_from_pos_neg(
             alphabet,
             [
                 upw!("a"),
                 upw!("aab"),
+                upw!("aba"),
                 upw!("aaab"),
                 upw!("bbaa"),
                 upw!("aca"),
                 upw!("caa"),
+                upw!("aac"),
                 upw!("abca"),
                 upw!("baac"),
             ],
@@ -163,6 +164,9 @@ mod tests {
                 upw!("b"),
                 upw!("bc"),
                 upw!("abc"),
+                upw!("acb"),
+                upw!("acc"),
+                upw!("abb"),
                 upw!("cba"),
                 upw!("ac"),
                 upw!("ba"),
@@ -172,6 +176,10 @@ mod tests {
         let t = std::time::Instant::now();
         let dpa = super::infer_precise_dpa(&sample).collect_dpa();
         let full_duration = t.elapsed().as_millis();
+        info!(
+            "full construction of precise DPA size {} took {full_duration}ms",
+            dpa.size()
+        );
 
         let expected = [
             (upw!("cabaca"), false),
@@ -184,18 +192,18 @@ mod tests {
             assert_eq!(b, *c, "{:?} is classified {b}, expected {c}", w);
         }
 
-        // let t = std::time::Instant::now();
-        // let dpa_mm = dpa_rpni(&sample);
-        // assert!(dpa_mm.size() <= dpa.size());
-        // let paper_duration = t.elapsed().as_millis();
-        // dpa_mm.display_rendered();
+        let t = std::time::Instant::now();
+        let dpa_mm = dpa_rpni(&sample);
 
-        // info!(
-        //     "Full construction took {full_duration}ms, paper construction took {paper_duration}ms"
-        // );
-        // for (w, c) in expected {
-        //     let b = dpa_mm.accepts_omega(&w);
-        //     assert_eq!(b, c, "{:?} is classified {b}, expected {c}", w);
-        // }
+        let paper_duration = t.elapsed().as_millis();
+        info!(
+            "Full construction took {full_duration}ms, paper construction took {paper_duration}ms"
+        );
+        assert!(dpa_mm.size() <= dpa.size());
+
+        for (w, c) in expected {
+            let b = dpa_mm.accepts(&w);
+            assert_eq!(b, c, "{:?} is classified {b}, expected {c}", w);
+        }
     }
 }
