@@ -20,7 +20,9 @@ pub mod data {
 #[cfg(test)]
 mod tests {
     use automata::{
-        automaton::MealyMachine, representation::IntoTs, transition_system::TSBuilder,
+        automaton::MealyMachine,
+        representation::IntoTs,
+        transition_system::{Dottable, TSBuilder},
         TransitionSystem,
     };
 
@@ -36,13 +38,16 @@ mod tests {
                 (1, 'a', 0, 2),
                 (1, 'b', 1, 1),
                 (1, 'c', 2, 2),
+                (2, 'a', 2, 2),
             ])
             .into_dts_with_initial(0)
             .into_mealy();
+        target.display_rendered();
 
         let alphabet = target.alphabet().clone();
         let oracle = MealyOracle::new(target, Some(3));
         let learned: MealyMachine = LStar::new(alphabet, oracle).infer();
+        learned.display_rendered();
         assert_eq!(learned.size(), 3);
     }
 }

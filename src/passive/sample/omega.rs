@@ -77,7 +77,7 @@ impl OmegaSample<CharAlphabet> {
                                 Ok(acc)
                             }
                         })
-                        .map(|acc| CharAlphabet::new(acc))
+                        .map(CharAlphabet::new)
                 } else {
                     Err(OmegaSampleParseError::MissingAlphabet)
                 }

@@ -12,7 +12,7 @@ impl<S> Experiment<S> {
     where
         S: Symbol,
     {
-        &self.0 == &[letter]
+        self.0 == [letter]
     }
 }
 
