@@ -3,12 +3,12 @@ use std::{cell::RefCell, fmt::Debug};
 use automata::prelude::*;
 use fixedbitset::FixedBitSet;
 use itertools::Itertools;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, trace, warn};
 use word::Concat;
 
 use super::{oracle::Oracle, Experiment, Hypothesis, ObservationTable};
 
-const ITERATION_THRESHOLD: usize = if cfg!(debug_assertions) { 3 } else { 200000 };
+const ITERATION_THRESHOLD: usize = if cfg!(debug_assertions) { 50 } else { 200000 };
 
 type Word<D> = Vec<SymbolOf<D>>;
 pub type Experiments<D> = Vec<Experiment<SymbolOf<D>>>;
@@ -120,10 +120,8 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
             );
 
             if !todo.is_empty() {
-                let mut queries = math::OrderedSet::default();
                 for r in todo {
-                    self.base.push(r.clone());
-                    queries.insert(r.clone());
+                    self.base.push(r);
                 }
                 // TODO optimize this call!
                 self.update_table();
@@ -183,6 +181,17 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
 
             let observed = self.table.get(mr).unwrap();
             observations.insert(observed, mr);
+        }
+
+        if cfg!(debug_assertions) {
+            for (mr, obs) in &self.table {
+                if !observations.contains_key(&obs) {
+                    let to_promote = self.rows_to_promote();
+                    panic!(
+                        "rows {to_promote:?} are not closed even though they should be!\n{self:?}"
+                    );
+                }
+            }
         }
 
         for (mr, i) in &state_map {
@@ -282,6 +291,7 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
     }
 
     fn rows_to_promote(&self) -> math::Set<Word<D>> {
+        trace!("deciding which rows to promote: {:?}", self);
         let start = std::time::Instant::now();
 
         let mut known = math::Set::from_iter(self.base.iter().map(|b| {
@@ -335,4 +345,72 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for LStar
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use automata::prelude::*;
+    use rand::Rng;
+    use tracing::trace;
+
+    use crate::active::{MealyOracle, MooreOracle};
+
+    #[test]
+    fn lstar_random_mealy() {
+        let mut rng = rand::thread_rng();
+        for i in 0..200 {
+            let symbols = rng.gen_range(1..5);
+            let max_color = rng.gen_range(1..10);
+            let size = rng.gen_range(1..25);
+
+            let pre_gen = std::time::Instant::now();
+            let ts = automata::random::generate_random_mealy(symbols, max_color, size);
+            trace!("generated mealy for size {size}, symbols {symbols} and max_color {max_color} in {} microseconds", pre_gen.elapsed().as_micros());
+
+            let oracle = MealyOracle::new(&ts, None);
+
+            let start = std::time::Instant::now();
+            let mm: MealyMachine = super::LStar::new(oracle.alphabet().clone(), oracle).infer();
+            let duration = start.elapsed().as_millis();
+            trace!("learning took {} ms", duration);
+
+            if mm.size() != ts.size() {
+                mm.display_rendered();
+                ts.display_rendered();
+                panic!(
+                    "Sizes don't match, expected {} got {}",
+                    ts.size(),
+                    mm.size()
+                );
+            }
+        }
+    }
+    #[test]
+    fn lstar_random_moore() {
+        let mut rng = rand::thread_rng();
+        for i in 0..200 {
+            let symbols = rng.gen_range(1..5);
+            let max_color = rng.gen_range(1..10);
+            let size = rng.gen_range(1..25);
+
+            let pre_gen = std::time::Instant::now();
+            let ts = automata::random::generate_random_moore(symbols, max_color, size);
+            trace!("generated Moore for size {size}, symbols {symbols} and max_color {max_color} in {} microseconds", pre_gen.elapsed().as_micros());
+
+            let oracle = MooreOracle::new(ts.clone());
+
+            let start = std::time::Instant::now();
+            let mm: MooreMachine =
+                super::LStar::new(CharAlphabet::of_size(symbols), oracle).infer();
+            let duration = start.elapsed().as_millis();
+            trace!("learning took {} ms", duration);
+
+            if mm.size() != ts.size() {
+                mm.display_rendered();
+                ts.display_rendered();
+                panic!(
+                    "Sizes don't match, expected {} got {}",
+                    ts.size(),
+                    mm.size()
+                );
+            }
+        }
+    }
+}

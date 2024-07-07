@@ -10,6 +10,7 @@ itertools = { workspace = true }
 bimap = { workspace = true }
 thiserror = { workspace = true }
 crossbeam-channel = { workspace = true }
+rand = { workspace = true }
 
 tabled = { version = "0.15.0", features = ["ansi"] }
 owo-colors = "4.0.0"

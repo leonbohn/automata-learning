@@ -42,7 +42,7 @@ pub trait Hypothesis: TransitionSystem + Deterministic + Pointed {
     ) -> impl IntoIterator<Item = Experiment<SymbolOf<Self>>>;
 }
 
-impl<A: Alphabet, Q: Color> Hypothesis for MooreMachine<A, Q, Q> {
+impl<A: Alphabet, Q: Color> Hypothesis for MooreMachine<A, Q, Void> {
     type Output = Q;
 
     fn output_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
@@ -88,7 +88,7 @@ impl<A: Alphabet, Q: Color> Hypothesis for MooreMachine<A, Q, Q> {
         target_row: &[Self::Output],
     ) -> Self::EdgeColor {
         assert!(!source_row.is_empty(), "cannot have zero experiments");
-        source_row[0].clone()
+        Void
     }
 }
 

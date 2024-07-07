@@ -229,7 +229,7 @@ pub struct MooreOracle<D> {
     automaton: D,
 }
 
-impl<D: Congruence> Oracle for MooreOracle<IntoMooreMachine<D>>
+impl<D: Deterministic> Oracle for MooreOracle<IntoMooreMachine<D>>
 where
     StateColor<D>: Color + Default + Ord,
 {
