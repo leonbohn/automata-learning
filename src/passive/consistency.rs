@@ -453,8 +453,6 @@ mod tests {
             .default_color(Void)
             .into_dts_with_initial(0);
 
-        println!("{:?}", ts2.omega_escape_prefix(upw!("a", "b")));
-
         // build samples
         let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
         let sample2 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("a", "b")]);

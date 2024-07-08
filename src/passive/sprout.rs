@@ -142,7 +142,7 @@ mod tests {
     use crate::passive::OmegaSample;
     use automata::prelude::*;
 
-    #[test_log::test]
+    #[test]
     fn sprout_buchi_successful() {
         let sigma = CharAlphabet::of_size(2);
 
@@ -164,8 +164,6 @@ mod tests {
             .into_dba(0);
 
         let res = sprout(sample.clone(), BuchiCondition).unwrap();
-        println!("{res:?}");
-
         for pos in sample.positive_words() {
             assert!(dba.accepts(pos));
             assert!(res.accepts(pos));

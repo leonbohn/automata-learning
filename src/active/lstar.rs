@@ -350,7 +350,7 @@ mod tests {
     use rand::Rng;
     use tracing::trace;
 
-    use crate::active::{MealyOracle, MooreOracle};
+    use crate::active::{MealyOracle, MooreOracle, Oracle};
 
     #[test]
     fn lstar_random_mealy() {
@@ -364,7 +364,7 @@ mod tests {
             let ts = automata::random::generate_random_mealy(symbols, max_color, size);
             trace!("generated mealy for size {size}, symbols {symbols} and max_color {max_color} in {} microseconds", pre_gen.elapsed().as_micros());
 
-            let oracle = MealyOracle::new(&ts, None);
+            let oracle = MealyOracle::new(&ts);
 
             let start = std::time::Instant::now();
             let mm: MealyMachine = super::LStar::new(oracle.alphabet().clone(), oracle).infer();

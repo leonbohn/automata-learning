@@ -492,24 +492,6 @@ pub(crate) mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn conflicts_inf_aba() {
-        let (alphabet, sample) = inf_aba_sample();
-        let conflicts = super::prefix_consistency_conflicts(sample);
-        // conflicts.deprecated_display_rendered();
-        todo!()
-    }
-
-    #[test]
-    #[ignore]
-    fn display_conflict_relation() {
-        let (alphabet, sample) = testing_larger_forc_sample();
-        let conflicts = super::prefix_consistency_conflicts(sample);
-        // conflicts.deprecated_display_rendered();
-        todo!()
-    }
-
-    #[test_log::test]
     fn learn_small_forc() {
         let (alphabet, sample) = testing_smaller_forc_smaple();
         let cong = sample.infer_prefix_congruence().unwrap();
@@ -521,18 +503,9 @@ pub(crate) mod tests {
 
         let conflicts: ConflictRelation<CharAlphabet> =
             super::iteration_consistency_conflicts(&split_sample, eps);
-        // conflicts.dfas[0].deprecated_display_rendered();
-        // conflicts.dfas[1].deprecated_display_rendered();
-        println!(
-            "{}",
-            conflicts
-                .conflicts
-                .iter()
-                .map(|(l, r)| format!("({l},{r})"))
-                .join(", ")
-        );
+
         let prc_eps = super::dpainf(conflicts, vec![], false, None).unwrap();
-        println!("{:?}", prc_eps);
+        assert_eq!(prc_eps.size(), 6);
     }
 
     #[test]
@@ -544,78 +517,4 @@ pub(crate) mod tests {
         let prc_eps = forc.prc(0).unwrap();
         assert_eq!(prc_eps.size(), 13);
     }
-
-    // #[test]
-    // fn prefix_consistency_sprout_two() {
-    //     let alphabet = CharAlphabet::of_size(2);
-    //     let sample = Sample::new_omega(
-    //         alphabet.clone(),
-    //         vec![
-    //             (upw!("a"), true),
-    //             (upw!("b", "a"), false),
-    //             (upw!("bb", "a"), true),
-    //         ],
-    //     );
-    //     let mut expected_cong: RightCongruence<CharAlphabet, Void, Void> =
-    //         RightCongruence::new(CharAlphabet::of_size(2));
-    //     let q0 = expected_cong.add_state(vec![]);
-    //     let q1 = expected_cong.add_state(vec!['b']);
-    //     expected_cong.add_edge(q0, 'b', q1, ());
-    //     expected_cong.add_edge(q1, 'b', q0, ());
-    //     expected_cong.add_edge(q0, 'a', q0, ());
-    //     expected_cong.add_edge(q1, 'a', q1, ());
-
-    //     let conflicts = super::prefix_consistency_conflicts(sample);
-
-    //     let cong = super::sprout(conflicts, vec![], true);
-
-    //     assert_eq!(cong.size(), expected_cong.size());
-    //     for word in ["aba", "abbabb", "baabaaba", "bababaaba", "b", "a", ""] {
-    //         let reached = cong.reached_state_color(word).unwrap();
-    //         let expected = expected_cong.reached_state_color(word).unwrap();
-    //         assert_eq!(
-    //             reached, expected,
-    //             "{} reached {}, expected was {}",
-    //             word, reached, expected
-    //         )
-    //     }
-    // }
-
-    // #[test]
-    // fn prefix_consistency_sprout_one() {
-    //     let alphabet = CharAlphabet::of_size(2);
-    //     let sample = Sample::new_omega(
-    //         alphabet.clone(),
-    //         vec![(upw!("a"), false), (upw!("b"), true)],
-    //     );
-    //     let conflicts = super::prefix_consistency_conflicts(sample);
-    //     let cong = super::sprout(conflicts, vec![], true);
-
-    //     assert_eq!(cong.size(), 1);
-    //     assert!(cong.contains_state_color(&vec![].into()));
-    // }
-
-    // #[test]
-    // fn prefix_consistency_sprout_four() {
-    //     let alphabet = CharAlphabet::of_size(2);
-    //     let sample = Sample::new_omega(
-    //         alphabet.clone(),
-    //         vec![
-    //             (upw!("a"), false),
-    //             (upw!("b", "a"), false),
-    //             (upw!("bb", "a"), false),
-    //             (upw!("bbb", "a"), true),
-    //         ],
-    //     );
-
-    //     let conflicts = super::prefix_consistency_conflicts(sample);
-    //     println!("{:?}", conflicts);
-
-    //     let cong = super::sprout(conflicts, vec![], true);
-
-    //     assert_eq!(cong.size(), 4);
-    //     for class in ["", "b", "bb", "bbb"] {
-    //         assert!(cong.contains_state_color(&class.into()))
-    //     }
-    // }
 }

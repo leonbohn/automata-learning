@@ -583,16 +583,6 @@ mod tests {
         let dfas_a = [da0, full.clone(), full];
 
         let dpa = PreciseDPA::new(cong, vec![dfas_e, dfas_a]);
-
-        let q = dpa.initial();
-        // let t = dpa.transition(q, 'a').unwrap();
-        // println!("{:?} -a:{}-> {:?}", q, t.color, t.target);
-        // let t = dpa.transition(q, 'b').unwrap();
-        // println!("{:?} -b:{}-> {:?}", q, t.color, t.target);
-        // let t = dpa.transition(q, 'c').unwrap();
-        // println!("{:?} -c:{}-> {:?}", q, t.color, t.target);
-
-        let trim: DPA = dpa.collect_dpa();
-        // trim.display_rendered();
+        assert_eq!(dpa.reachable_state_indices().count(), 8);
     }
 }

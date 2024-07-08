@@ -15,7 +15,7 @@ pub mod sample;
 pub use sample::{ClassOmegaSample, PeriodicOmegaSample, SetSample, SplitOmegaSample};
 
 use crate::{
-    active::{LStar, MealyOracle},
+    active::{CompletingMealyOracle, LStar},
     passive::fwpm::FWPM,
     prefixtree::prefix_tree,
     AnnotatedCongruence,
@@ -116,7 +116,7 @@ pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet>) -> DPA {
     let mm = completed.with_initial(initial).collect_mealy();
 
     let alphabet = mm.alphabet().clone();
-    let oracle = MealyOracle::new(mm, Some(0));
+    let oracle = CompletingMealyOracle::new(mm, 0);
 
     let start = std::time::Instant::now();
     let learned: MealyMachine = LStar::new(alphabet, oracle).infer();
@@ -142,7 +142,7 @@ mod tests {
 
     use super::{sample, OmegaSample};
 
-    #[test_log::test]
+    #[test]
     fn infer_precise_dpa_with_al_inf_aa() {
         let alphabet = CharAlphabet::of_size(3);
         let sample = OmegaSample::new_omega_from_pos_neg(

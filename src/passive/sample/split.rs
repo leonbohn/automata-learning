@@ -28,7 +28,7 @@ impl<'a, A: Alphabet> std::ops::DerefMut for ClassOmegaSample<'a, A> {
 }
 
 impl<'a, A: Alphabet> ClassOmegaSample<'a, A> {
-    /// Creates a new [`ClassOmegaSample`] from a [`RightCongruence`], a [`Class`] and a [`Sample`].
+    /// Creates a new [`ClassOmegaSample`] from a [`RightCongruence`], a [`Class`] and a [`SetSample`].
     pub fn new(
         congruence: &'a RightCongruence<A>,
         class: Class<A::Symbol>,

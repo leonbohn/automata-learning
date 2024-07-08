@@ -404,7 +404,7 @@ mod tests {
         },
     };
 
-    #[test_log::test]
+    #[test]
     #[ignore]
     fn priority_mapping() {
         let mm = NTS::builder()
@@ -452,13 +452,13 @@ mod tests {
             .into_dpa(0);
         let start = Instant::now();
         let mm = priority_mapping_vec_backed(&dpa, dpa.state_indices());
-        println!(
+        debug!(
             "Vec backed took {} microseconds",
             start.elapsed().as_micros()
         );
         let start = Instant::now();
         let mm = priority_mapping_set_backed(&dpa, dpa.state_indices());
-        println!(
+        debug!(
             "Set backed took {} microseconds",
             start.elapsed().as_micros()
         );
@@ -480,7 +480,7 @@ mod tests {
             .into_dpa(0)
     }
 
-    #[test_log::test]
+    #[test]
     fn characterize_prefix_cong() {
         let dpa = simple_dpa();
 
@@ -496,11 +496,11 @@ mod tests {
         let sample = right_congruence_by_omega_words(&cong);
     }
 
-    #[test_log::test]
+    #[test]
     #[ignore]
     fn characterize_dpa() {
         let dpa = simple_dpa();
         let sample = super::dpa(dpa);
-        println!("{:?}", sample);
+        info!("{:?}", sample);
     }
 }

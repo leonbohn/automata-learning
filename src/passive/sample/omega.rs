@@ -93,11 +93,11 @@ impl OmegaSample<CharAlphabet> {
             match lines.next() {
                 Some(word) => {
                     trace!("Parsing positive word \"{word}\"");
-                    let trim = word.trim();
-                    if trim.is_empty() || trim.starts_with('#') || trim == "negative:" {
+                    let word = word.trim();
+                    if word.is_empty() || word.starts_with('#') || word == "negative:" {
                         break 'positive;
                     }
-                    let parsed = ReducedOmegaWord::try_from(word.as_str())
+                    let parsed = ReducedOmegaWord::try_from_str(word)
                         .map_err(OmegaSampleParseError::OmegaWordParseError)?;
                     if let Some(old_classification) = words.insert(parsed, true) {
                         debug!("Duplicate positive word found");
@@ -107,8 +107,12 @@ impl OmegaSample<CharAlphabet> {
             }
         }
         for word in lines {
+            let word = word.trim();
+            if word.starts_with('#') || word.is_empty() {
+                continue;
+            }
             trace!("Parsing negative word \"{word}\"");
-            let parsed = ReducedOmegaWord::try_from(word.as_str())
+            let parsed = ReducedOmegaWord::try_from_str(word)
                 .map_err(OmegaSampleParseError::OmegaWordParseError)?;
             if let Some(old_classification) = words.insert(parsed, false) {
                 if old_classification {
