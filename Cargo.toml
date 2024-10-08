@@ -19,7 +19,7 @@ either = "1.13.0"
 paste = "1.0"
 fixedbitset = "0.5.7"
 
-automata = { path = "../automata" }
+automata = { path = "../automata", features = ["hoa", "render", "graphviz"] }
 
 [features]
 default = []

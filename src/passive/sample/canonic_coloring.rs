@@ -28,7 +28,6 @@ mod tests {
         let annotated = AnnotatedCongruence::build(forc.prc(0).unwrap(), &periodic);
 
         let coloring = annotated.canonic_coloring();
-        coloring.display_rendered();
 
         // words we expect prio 1 from
         for w in ["b", "bbabbbb", "aaaaaaabb", "babb", "baabbaabbaabbaa"] {

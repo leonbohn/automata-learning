@@ -139,9 +139,6 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
             self.process_counterexample(witness, expected_color);
         }
 
-        let hyp = self.hypothesis();
-        hyp.collect_mealy().display_rendered();
-        std::thread::sleep(std::time::Duration::from_millis(1000));
         panic!("Iteration threshold exceeded!")
     }
 
@@ -372,8 +369,6 @@ mod tests {
             trace!("learning took {} ms", duration);
 
             if mm.size() != ts.size() {
-                mm.display_rendered();
-                ts.display_rendered();
                 panic!(
                     "Sizes don't match, expected {} got {}",
                     ts.size(),
@@ -403,8 +398,6 @@ mod tests {
             trace!("learning took {} ms", duration);
 
             if mm.size() != ts.size() {
-                mm.display_rendered();
-                ts.display_rendered();
                 panic!(
                     "Sizes don't match, expected {} got {}",
                     ts.size(),
