@@ -13,11 +13,11 @@ crossbeam-channel = { workspace = true }
 rand = { workspace = true }
 
 tabled = { version = "0.15.0", features = ["ansi"] }
-owo-colors = "4.0.0"
+owo-colors = "4.1.0"
 alea = "0.2"
-either = "1.9.0"
+either = "1.13.0"
 paste = "1.0"
-fixedbitset = "0.5.0"
+fixedbitset = "0.5.7"
 
 automata = { path = "../automata" }
 
@@ -25,7 +25,7 @@ automata = { path = "../automata" }
 default = []
 
 [dev-dependencies]
-test-log = { version = "0.2.14", features = ["trace"] }
+test-log = { version = "0.2.16", features = ["trace"] }
 # [[bin]]
 # name = "coal"
 # path = "src/bin/coal.rs"
