@@ -85,8 +85,7 @@ pub fn infer_precise_dpa<A: Alphabet>(
     let mut fwpm = FWPM::empty(cong.clone());
     for (class, idx) in cong.classes() {
         let periodic_sample = split.get(idx).expect("Must exist!").to_periodic_sample();
-        let annotated_prc =
-            AnnotatedCongruence::build(forc.prc(idx).expect("Must exist"), &periodic_sample);
+        let annotated_prc = AnnotatedCongruence::build(&forc[idx], &periodic_sample);
         trace!(
             "{} for class {:?}\t{:?}",
             "ANNOTATED CONGRUENCE".bold().blue(),

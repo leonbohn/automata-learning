@@ -1,4 +1,4 @@
-use automata::{congruence::FORC, prelude::*};
+use automata::{families::FORC, prelude::*};
 use itertools::Itertools;
 
 use crate::passive::dpainf::{dpainf, iteration_consistency_conflicts};

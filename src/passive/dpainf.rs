@@ -514,7 +514,7 @@ pub(crate) mod tests {
         let cong = sample.infer_prefix_congruence().unwrap();
         let split = sample.split(&cong);
         let forc = split.infer_forc();
-        let prc_eps = forc.prc(0).unwrap();
+        let prc_eps = forc[0].clone();
         assert_eq!(prc_eps.size(), 13);
     }
 }

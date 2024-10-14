@@ -141,7 +141,7 @@ impl<A: Alphabet> Oracle for DFAOracle<A> {
     {
         for mr in (&self.automaton)
             .ts_product(hypothesis)
-            .minimal_representatives()
+            .minimal_representatives_iter()
         {
             match (self.automaton.accepts(&mr), hypothesis.output(&mr)) {
                 (b, bb) if b != bb => return Err((mr.to_vec(), b)),
@@ -310,7 +310,7 @@ where
     {
         for mr in (&self.automaton)
             .ts_product(hypothesis)
-            .minimal_representatives()
+            .minimal_representatives_iter()
         {
             match (
                 self.automaton
