@@ -454,7 +454,7 @@ mod tests {
             .into_dts_with_initial(0);
 
         // build samples
-        let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
+        let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [crate::upw!("a")], [upw!("b")]);
         let sample2 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("a", "b")]);
         let sample3 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a", "b")], [upw!("b")]);
 

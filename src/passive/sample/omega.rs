@@ -1,6 +1,5 @@
 use std::{collections::VecDeque, io::BufRead};
 
-use alphabet::SimpleAlphabet;
 use automata::prelude::*;
 use either::Either;
 use itertools::Itertools;
