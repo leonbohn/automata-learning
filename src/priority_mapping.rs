@@ -174,8 +174,8 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             .0
             .state_indices()
             .map(|i| {
-                let scc = tjdag.get(i).expect("Must be in an SCC");
-                let info = dag.color(scc).expect("Must have worked on that SCC");
+                let scc = tjdag.scc_index_of(i).expect("Must be in an SCC");
+                let info = dag.color(*scc).expect("Must have worked on that SCC");
                 (
                     i,
                     info.expect("Every SCC must have a color")
@@ -187,8 +187,8 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
 
         (&self.0)
             .map_edge_colors_full(|_q, _e, _c, p| {
-                let scc = tjdag.get(p).expect("Must be in an SCC");
-                let info = dag.color(scc).expect("Must have worked on that SCC");
+                let scc = tjdag.scc_index_of(p).expect("Must be in an SCC");
+                let info = dag.color(*scc).expect("Must have worked on that SCC");
                 info.expect("Every SCC must have a color")
             })
             .with_state_color(state_coloring)

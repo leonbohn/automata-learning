@@ -225,7 +225,7 @@ pub fn prefix_consistency_conflicts<A: Alphabet, S: std::borrow::Borrow<OmegaSam
     let sccs = dfa.sccs();
     let states_with_infinite_run: Vec<_> = sccs
         .iter()
-        .filter_map(|scc| {
+        .filter_map(|(_, scc)| {
             if !scc.is_transient() {
                 Some(scc.clone().into_iter().map(Into::into))
             } else {
