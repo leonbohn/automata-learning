@@ -133,7 +133,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
     pub fn canonic_coloring(&self) -> MooreMachine<A, Int> {
         // we first need to decompose into sccs and mark them with the color of the
         // idempotent that it contains.
-        let tjdag = self.0.tarjan_dag();
+        let tjdag = self.0.sccs();
         let mut dag: Dag<Result<usize, Option<bool>>> =
             tjdag.fold_state_colors(Err(None), |acc, x| match (acc, x.good) {
                 (Err(None), None) => Err(None),

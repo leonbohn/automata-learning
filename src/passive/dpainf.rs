@@ -222,7 +222,10 @@ pub fn prefix_consistency_conflicts<A: Alphabet, S: std::borrow::Borrow<OmegaSam
 
     let dfa = (&left_pta).ts_product(&right_pta);
 
+    trace!("built prefix tree product");
     let sccs = dfa.sccs();
+    trace!("computed scc decomposition");
+
     let states_with_infinite_run: Vec<_> = sccs
         .iter()
         .filter_map(|(_, scc)| {
@@ -508,10 +511,11 @@ pub(crate) mod tests {
         assert_eq!(prc_eps.size(), 6);
     }
 
-    #[test]
+    #[test_log::test]
     fn learn_larger_forc() {
         let (alphabet, sample) = testing_larger_forc_sample();
         let cong = sample.infer_prefix_congruence().unwrap();
+        tracing::debug!("Got prefix congruence");
         let split = sample.split(&cong);
         let forc = split.infer_forc();
         let prc_eps = forc[0].clone();

@@ -17,7 +17,7 @@ mod tests {
     use crate::passive::dpainf::tests::testing_larger_forc_sample;
     use crate::priority_mapping::AnnotatedCongruence;
 
-    #[test]
+    #[test_log::test]
     fn classification() {
         let (alphabet, sample) = testing_larger_forc_sample();
         let cong = sample.infer_prefix_congruence().unwrap();
