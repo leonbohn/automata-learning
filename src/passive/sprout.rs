@@ -1,3 +1,7 @@
+/// Module defining ConsistencyCheck and implementing it for various omega acceptance conditions
+mod consistency;
+pub use consistency::*;
+
 use automata::{
     automaton::WithoutCondition, math::OrderedSet, prelude::*, random, transition_system::path,
 };
@@ -8,7 +12,7 @@ use std::{collections::HashSet, fmt::Debug, path::Iter};
 
 use crate::prefixtree::prefix_tree;
 
-use super::{consistency::ConsistencyCheck, OmegaSample};
+use super::OmegaSample;
 
 #[derive(thiserror::Error)]
 pub enum SproutError<A: ConsistencyCheck<WithInitial<DTS>>> {

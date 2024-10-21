@@ -34,9 +34,6 @@ pub mod fwpm;
 /// Defines the precise DPA.
 pub mod precise;
 
-/// Module defining ConsistencyCheck and implementing it for various omega acceptance conditions
-pub mod consistency;
-
 /// Module containing the implementation of the sprout algorithm.
 pub mod sprout;
 

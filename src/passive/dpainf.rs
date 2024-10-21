@@ -213,10 +213,7 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
 
 /// Computes a conflict relation encoding prefix consistency. For more details on how this works, see
 /// Lemma 28 in [this paper](https://arxiv.org/pdf/2302.11043.pdf).
-pub fn prefix_consistency_conflicts<A: Alphabet, S: std::borrow::Borrow<OmegaSample<A>>>(
-    sample: S,
-) -> ConflictRelation<A> {
-    let sample = sample.borrow();
+pub fn prefix_consistency_conflicts<A: Alphabet>(sample: &OmegaSample<A>) -> ConflictRelation<A> {
     let left_pta = prefix_tree(sample.alphabet.clone(), sample.positive_words());
     let right_pta = prefix_tree(sample.alphabet.clone(), sample.negative_words());
 
