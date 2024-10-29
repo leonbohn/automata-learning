@@ -1,9 +1,12 @@
 use std::fmt::Debug;
 
-use automata::prelude::*;
-use itertools::Itertools;
-
 use super::precise::PreciseDPA;
+use automata::automaton::MooreMachine;
+use automata::core::alphabet::Alphabet;
+use automata::core::math;
+use automata::ts::StateIndex;
+use automata::{RightCongruence, TransitionSystem};
+use itertools::Itertools;
 
 /// This structure represents a family of weak priority mappings (FWPM). It consists of a leading
 /// congruence ~ and for each class of ~, a mapping that associates finite words with integers.

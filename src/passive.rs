@@ -1,9 +1,14 @@
+use automata::automaton::{MealyMachine, DBA, DFA, DPA};
+use automata::core::alphabet::{Alphabet, CharAlphabet};
+use automata::representation::{CollectTs, IntoTs};
+use automata::ts::operations::Product;
+use automata::ts::Deterministic;
 use automata::{
-    prelude::*,
-    transition_system::{
+    ts::{
         operations::{DefaultIfMissing, MapStateColor},
         IndexedAlphabet,
     },
+    TransitionSystem,
 };
 use owo_colors::OwoColorize;
 use tracing::{debug, trace};
@@ -131,10 +136,12 @@ fn characterize_dpa(dpa: DPA) -> OmegaSample {
 
 #[cfg(test)]
 mod tests {
-    use automata::prelude::*;
-    use tracing::info;
-
     use crate::passive::dpa_rpni;
+    use automata::core::alphabet::CharAlphabet;
+    use automata::core::upw;
+    use automata::representation::CollectTs;
+    use automata::TransitionSystem;
+    use tracing::info;
 
     use super::{sample, OmegaSample};
 

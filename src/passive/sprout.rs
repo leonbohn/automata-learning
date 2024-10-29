@@ -2,15 +2,17 @@
 mod consistency;
 pub use consistency::*;
 
-use automata::{
-    automaton::WithoutCondition, math::OrderedSet, prelude::*, random, transition_system::path,
-};
+use automata::{automaton::WithoutCondition, random, ts::path, Pointed, TransitionSystem, DTS};
 use itertools::Itertools;
 use tracing::{error, info, trace, warn};
 
-use std::{collections::HashSet, fmt::Debug, path::Iter};
-
 use crate::prefixtree::prefix_tree;
+use automata::automaton::{Automaton, WithInitial};
+use automata::core::alphabet::CharAlphabet;
+use automata::core::word::OmegaWord;
+use automata::core::Void;
+use automata::ts::{run, Deterministic, Shrinkable, Sproutable};
+use std::{collections::HashSet, fmt::Debug, path::Iter};
 
 use super::OmegaSample;
 
@@ -140,11 +142,14 @@ impl OmegaSample {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
-
     use super::*;
     use crate::passive::OmegaSample;
-    use automata::prelude::*;
+    use automata::automaton::{BuchiCondition, MinEvenParityCondition};
+    use automata::core::alphabet::CharAlphabet;
+    use automata::core::{upw, Void};
+    use automata::ts::Sproutable;
+    use automata::DTS;
+    use std::collections::HashSet;
 
     #[test]
     fn sprout_buchi_successful() {

@@ -1,7 +1,9 @@
-use automata::{families::FORC, prelude::*};
-use itertools::Itertools;
-
 use crate::passive::dpainf::{dpainf, iteration_consistency_conflicts};
+use automata::core::alphabet::Alphabet;
+use automata::core::math;
+use automata::ts::{Deterministic, StateIndex};
+use automata::{families::FORC, Class, RightCongruence};
+use itertools::Itertools;
 
 use super::{OmegaSample, SetSample};
 

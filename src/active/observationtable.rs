@@ -1,4 +1,6 @@
-use automata::prelude::*;
+use automata::core::alphabet::Symbol;
+use automata::core::math;
+use automata::core::word::{FiniteWord, Word};
 use std::hash::Hash;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

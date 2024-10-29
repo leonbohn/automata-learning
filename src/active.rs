@@ -20,7 +20,7 @@ pub mod data {
 #[cfg(test)]
 mod tests {
     use automata::{
-        automaton::MealyMachine, representation::IntoTs, transition_system::TSBuilder, Dottable,
+        automaton::MealyMachine, dot::Dottable, representation::IntoTs, ts::TSBuilder,
         TransitionSystem,
     };
 

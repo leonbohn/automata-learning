@@ -1,11 +1,17 @@
 use std::{collections::VecDeque, io::BufRead};
 
-use automata::prelude::*;
+use automata::core::alphabet::{Alphabet, CharAlphabet};
+use automata::core::math;
+use automata::core::word::{
+    OmegaWord, PeriodicOmegaWord, ReducedOmegaWord, ReducedParseError, Word,
+};
+use automata::representation::CollectTs;
+use automata::ts::Deterministic;
+use automata::{Class, Pointed, RightCongruence, TransitionSystem};
 use either::Either;
 use itertools::Itertools;
 use thiserror::Error;
 use tracing::{debug, trace};
-use word::ReducedParseError;
 
 use crate::{
     passive::{

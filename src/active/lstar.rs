@@ -1,10 +1,14 @@
 use std::{cell::RefCell, fmt::Debug};
 
-use automata::prelude::*;
+use automata::core::alphabet::Alphabet;
+use automata::core::word::Concat;
+use automata::core::word::FiniteWord;
+use automata::core::{math, Show};
+use automata::ts::{ForAlphabet, Sproutable, SymbolOf};
+use automata::DTS;
 use fixedbitset::FixedBitSet;
 use itertools::Itertools;
 use tracing::{debug, info, trace, warn};
-use word::Concat;
 
 use super::{oracle::Oracle, Experiment, Hypothesis, ObservationTable};
 
@@ -343,11 +347,12 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for LStar
 
 #[cfg(test)]
 mod tests {
-    use automata::prelude::*;
+    use crate::active::{MealyOracle, MooreOracle, Oracle};
+    use automata::automaton::{MealyMachine, MooreMachine};
+    use automata::core::alphabet::CharAlphabet;
+    use automata::TransitionSystem;
     use rand::Rng;
     use tracing::trace;
-
-    use crate::active::{MealyOracle, MooreOracle, Oracle};
 
     #[test]
     fn lstar_random_mealy() {

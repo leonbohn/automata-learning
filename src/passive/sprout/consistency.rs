@@ -3,13 +3,18 @@ use std::collections::HashMap;
 use std::iter;
 use std::ops::Not;
 
-use automata::{
-    math::OrderedSet,
-    prelude::*,
-    transition_system::path::{self, LassoIn},
-};
-
 use crate::prefixtree::prefix_tree;
+use automata::automaton::{BuchiCondition, MinEvenParityCondition, DBA, DPA};
+use automata::core::alphabet::{Alphabet, CharAlphabet};
+use automata::core::math::OrderedSet;
+use automata::core::Void;
+use automata::representation::CollectTs;
+use automata::ts::run::InfiniteRunOutput::Successful;
+use automata::ts::{run, Deterministic, EdgeColor, Sproutable};
+use automata::{
+    ts::path::{self, LassoIn},
+    Pointed, TransitionSystem,
+};
 
 use super::OmegaSample;
 
@@ -431,9 +436,12 @@ where
 mod tests {
     use super::*;
     use crate::passive::OmegaSample;
+    use automata::automaton::{BuchiCondition, MinEvenParityCondition, WithInitial};
+    use automata::core::alphabet::CharAlphabet;
+    use automata::core::{upw, Void};
     use automata::{
         automaton::{DeterministicOmegaAutomaton, OmegaAcceptanceCondition},
-        prelude::*,
+        DTS,
     };
 
     // default alphabet
@@ -454,7 +462,7 @@ mod tests {
             .into_dts_with_initial(0);
 
         // build samples
-        let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [crate::upw!("a")], [upw!("b")]);
+        let sample1 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("b")]);
         let sample2 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a")], [upw!("a", "b")]);
         let sample3 = OmegaSample::new_omega_from_pos_neg(sigma(), [upw!("a", "b")], [upw!("b")]);
 

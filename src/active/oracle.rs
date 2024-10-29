@@ -1,10 +1,15 @@
 use std::cell::RefCell;
 
-use automata::{prelude::*, transition_system::operations::MapStateColor, Lattice};
-use math::Set;
-use tracing::trace;
-
 use crate::passive::SetSample;
+use automata::automaton::{IntoMooreMachine, MealyLike, MealyMachine, DFA};
+use automata::core::alphabet::{Alphabet, Symbol};
+use automata::core::word::{FiniteWord, Word};
+use automata::core::{math::Set, Color, Int, Lattice, Void};
+use automata::representation::CollectTs;
+use automata::ts::operations::Product;
+use automata::ts::{Deterministic, EdgeColor, StateColor};
+use automata::{ts::operations::MapStateColor, Congruence, TransitionSystem};
+use tracing::trace;
 
 use super::Hypothesis;
 
@@ -275,7 +280,7 @@ impl<A: Alphabet, C: Color + Ord> Oracle for CompletingMealyOracle<A, C> {
     }
 }
 
-/// An oracle based on a [`MooreMachine`].
+/// An oracle based on a `MooreMachine`.
 #[derive(Debug, Clone)]
 pub struct MooreOracle<D> {
     automaton: D,
@@ -331,7 +336,7 @@ where
     D: Congruence,
     EdgeColor<D>: Color,
 {
-    /// Creates a new [`MooreOracle`] based on an instance of something that behaves like a [`MooreMachine`].
+    /// Creates a new [`MooreOracle`] based on an instance of something that behaves like a `MooreMachine`.
     pub fn new(automaton: D) -> Self {
         Self { automaton }
     }
@@ -339,7 +344,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use automata::prelude::*;
+    use automata::automaton::MealyMachine;
+    use automata::{TransitionSystem, DTS};
 
     use crate::active::LStar;
 

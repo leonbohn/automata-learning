@@ -1,6 +1,10 @@
 use std::collections::VecDeque;
 
-use automata::prelude::*;
+use automata::core::alphabet::Alphabet;
+use automata::core::math;
+use automata::core::word::{OmegaWord, ReducedOmegaWord};
+use automata::ts::{Sproutable, StateIndex};
+use automata::{Pointed, RightCongruence};
 use itertools::Itertools;
 use tracing::trace;
 
@@ -76,7 +80,6 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
 #[cfg(test)]
 mod tests {
     use super::prefix_tree;
-    use automata::prelude::*;
 
     #[test]
     #[ignore]

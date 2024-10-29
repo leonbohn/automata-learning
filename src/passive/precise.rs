@@ -1,14 +1,19 @@
 use std::fmt::Debug;
 
+use super::fwpm::FWPM;
+use automata::automaton::{DFA, DPA};
+use automata::core::alphabet::{Alphabet, Matcher};
+use automata::core::{math, Int, Show, Void};
+use automata::representation::CollectTs;
+use automata::ts::{
+    Deterministic, EdgeExpression, ForAlphabet, IsEdge, Sproutable, StateColor, StateIndex,
+};
 use automata::{
-    dot::{DotStateAttribute, DotTransitionAttribute},
-    prelude::*,
-    Dottable,
+    dot::{DotStateAttribute, DotTransitionAttribute, Dottable},
+    Pointed, RightCongruence, TransitionSystem, DTS,
 };
 use itertools::Itertools;
 use tracing::{debug, info};
-
-use super::fwpm::FWPM;
 
 const MAX_PRIORITIES: usize = 8;
 
@@ -51,8 +56,8 @@ pub fn build_precise_dpa_for<A: Alphabet>(fwpm: FWPM<A>) -> DPA<A> {
     }
 }
 
-type ClassId = StateIndex;
-type StateId = StateIndex;
+type ClassId = u32;
+type StateId = u32;
 
 /// We use const generics in the definition of the precise DPA. Therefore, it is necessary to bound the
 /// number of colors that can be used. This constant is used as such a bound.
@@ -274,7 +279,7 @@ impl<A: Alphabet, const N: usize> TransitionSystem for PreciseDPA<A, N> {
     type EdgesFromIter<'this> = PreciseDPAEdgesFrom<'this, A, N>
     where
         Self: 'this;
-    type StateIndices<'this> = automata::transition_system::Reachable<'this, Self, false> where Self: 'this;
+    type StateIndices<'this> = automata::ts::Reachable<'this, Self, false> where Self: 'this;
 
     type Alphabet = A;
 
@@ -333,7 +338,7 @@ impl<A: Alphabet, const N: usize> Deterministic for PreciseDPA<A, N> {
 
 impl<A: Alphabet, const N: usize> Pointed for PreciseDPA<A, N> {
     fn initial(&self) -> Self::StateIndex {
-        self.states.first().expect("We add this during creation")
+        *self.states.first().expect("We add this during creation")
     }
 }
 
@@ -507,7 +512,9 @@ impl<A: Alphabet, const N: usize> Dottable for PreciseDPA<A, N> {
 
 #[cfg(test)]
 mod tests {
-    use automata::prelude::*;
+    use automata::core::alphabet::CharAlphabet;
+    use automata::core::Void;
+    use automata::{TransitionSystem, DTS};
 
     use super::PreciseDPA;
 

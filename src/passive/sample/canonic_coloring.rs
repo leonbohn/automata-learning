@@ -1,6 +1,6 @@
-use automata::prelude::*;
-
 use crate::priority_mapping::ClassifiesIdempotents;
+use automata::core::alphabet::{Alphabet, Symbol};
+use automata::core::word::FiniteWord;
 
 use super::PeriodicOmegaSample;
 
@@ -12,7 +12,7 @@ impl<A: Alphabet> ClassifiesIdempotents<A> for PeriodicOmegaSample<A> {
 
 #[cfg(test)]
 mod tests {
-    use automata::prelude::*;
+    use automata::TransitionSystem;
 
     use crate::passive::dpainf::tests::testing_larger_forc_sample;
     use crate::priority_mapping::AnnotatedCongruence;

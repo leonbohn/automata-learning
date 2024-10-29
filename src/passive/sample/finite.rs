@@ -1,5 +1,5 @@
 use super::FiniteSample;
-use automata::prelude::*;
+use automata::core::alphabet::Alphabet;
 use itertools::Itertools;
 use thiserror::Error;
 

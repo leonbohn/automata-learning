@@ -1,7 +1,14 @@
 #![allow(missing_docs)]
-use automata::prelude::*;
 
 use super::{Experiment, Experiments};
+use automata::automaton::{MealyMachine, MooreMachine};
+use automata::core::{
+    alphabet::{Alphabet, Symbol},
+    word::FiniteWord,
+    Color, Void,
+};
+use automata::ts::{Deterministic, StateIndex, SymbolOf};
+use automata::{Pointed, TransitionSystem, DTS};
 
 pub trait Hypothesis: TransitionSystem + Deterministic + Pointed {
     type Output: Color;

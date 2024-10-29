@@ -6,8 +6,6 @@
 #[macro_use]
 pub mod passive;
 
-use automata::prelude::*;
-
 // /// Deals with active learning algorithms such as L*.
 pub mod active;
 mod priority_mapping;

@@ -1,11 +1,17 @@
 use std::fmt::Debug;
 
-use dag::Dag;
 use owo_colors::OwoColorize;
 
+use automata::automaton::{MealyMachine, MooreMachine};
+use automata::core::alphabet::{Alphabet, CharAlphabet, Symbol};
+use automata::core::dag::Dag;
+use automata::core::word::FiniteWord;
+use automata::core::{math, Color, Int, Show, Void};
+use automata::representation::CollectTs;
+use automata::ts::StateIndex;
 use automata::{
     dot::{DotStateAttribute, Dottable},
-    prelude::*,
+    RightCongruence, TransitionSystem,
 };
 
 /// A family of weak priority mappings (FWPM) is a pair (C, M) where C is a
@@ -21,7 +27,7 @@ pub struct FamilyOfWeakPriorityMappings<A: Alphabet = CharAlphabet> {
 
 impl<A: Alphabet> FamilyOfWeakPriorityMappings<A> {}
 
-/// A priority mapping is essentially a [`crate::MealyMachine`], i.e. it reads
+/// A priority mapping is essentially a [`MealyMachine`], i.e. it reads
 /// finite words and ouptuts a priority (which in this case is a `usize`).
 pub type WeakPriorityMapping<A = CharAlphabet> = MealyMachine<A>;
 
@@ -170,7 +176,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             *dag.color_mut(t).expect("This node exists") = Ok(i + offset);
         }
 
-        let state_coloring: automata::math::Map<_, _> = self
+        let state_coloring: automata::core::math::Map<_, _> = self
             .0
             .state_indices()
             .map(|i| {
@@ -203,7 +209,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
         C: Color,
         F: ClassifiesIdempotents<A>,
     {
-        let annotations: automata::math::Map<_, _> = rc
+        let annotations: automata::core::math::Map<_, _> = rc
             .state_indices()
             .map(|i| {
                 let cls = rc.state_to_mr(i).unwrap();
