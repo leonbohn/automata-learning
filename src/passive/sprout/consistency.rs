@@ -1,19 +1,19 @@
-use itertools::{all, Either, Itertools};
+use itertools::{Either, Itertools, all};
 use std::collections::HashMap;
 use std::iter;
 use std::ops::Not;
 
 use crate::prefixtree::prefix_tree;
-use automata::automaton::{BuchiCondition, MinEvenParityCondition, DBA, DPA};
+use automata::automaton::{BuchiCondition, DBA, DPA, MinEvenParityCondition};
+use automata::core::Void;
 use automata::core::alphabet::{Alphabet, CharAlphabet};
 use automata::core::math::OrderedSet;
-use automata::core::Void;
 use automata::representation::CollectTs;
 use automata::ts::run::InfiniteRunOutput::Successful;
-use automata::ts::{run, Deterministic, EdgeColor, Sproutable};
+use automata::ts::{Deterministic, EdgeColor, Sproutable, run};
 use automata::{
-    ts::path::{self, LassoIn},
     Pointed, TransitionSystem,
+    ts::path::{self, LassoIn},
 };
 
 use super::OmegaSample;
@@ -239,7 +239,9 @@ where
             }
             (true, true) => {
                 // this shouldn't happen, pos and neg induce same infinity set
-                panic!("Set of all transitions is both accepting and non-accepting. Transition system not consistent.");
+                panic!(
+                    "Set of all transitions is both accepting and non-accepting. Transition system not consistent."
+                );
             }
         }
         // build dpa from Zielonka path
@@ -438,10 +440,10 @@ mod tests {
     use crate::passive::OmegaSample;
     use automata::automaton::{BuchiCondition, MinEvenParityCondition, WithInitial};
     use automata::core::alphabet::CharAlphabet;
-    use automata::core::{upw, Void};
+    use automata::core::{Void, upw};
     use automata::{
-        automaton::{DeterministicOmegaAutomaton, OmegaAcceptanceCondition},
         DTS,
+        automaton::{DeterministicOmegaAutomaton, OmegaAcceptanceCondition},
     };
 
     // default alphabet

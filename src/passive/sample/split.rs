@@ -2,7 +2,7 @@ use crate::passive::dpainf::{dpainf, iteration_consistency_conflicts};
 use automata::core::alphabet::Alphabet;
 use automata::core::math;
 use automata::ts::{Deterministic, StateIndex};
-use automata::{families::FORC, Class, RightCongruence};
+use automata::{Class, RightCongruence, families::FORC};
 use itertools::Itertools;
 
 use super::{OmegaSample, SetSample};

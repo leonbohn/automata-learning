@@ -2,16 +2,16 @@
 mod consistency;
 pub use consistency::*;
 
-use automata::{automaton::WithoutCondition, random, ts::path, Pointed, TransitionSystem, DTS};
+use automata::{DTS, Pointed, TransitionSystem, automaton::WithoutCondition, random, ts::path};
 use itertools::Itertools;
 use tracing::{error, info, trace, warn};
 
 use crate::prefixtree::prefix_tree;
 use automata::automaton::{Automaton, WithInitial};
+use automata::core::Void;
 use automata::core::alphabet::CharAlphabet;
 use automata::core::word::OmegaWord;
-use automata::core::Void;
-use automata::ts::{run, Deterministic, Shrinkable, Sproutable};
+use automata::ts::{Deterministic, Shrinkable, Sproutable, run};
 use std::{collections::HashSet, fmt::Debug, path::Iter};
 
 use super::OmegaSample;
@@ -71,7 +71,9 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
     let mut mut_sample = sample.clone();
 
     'outer: loop {
-        trace!("attempting to find an escape prefix with sets\npos {pos_sets:?}, neg {neg_sets:?}\n{mut_sample:?}\n{ts:?}");
+        trace!(
+            "attempting to find an escape prefix with sets\npos {pos_sets:?}, neg {neg_sets:?}\n{mut_sample:?}\n{ts:?}"
+        );
         let Some(escape_prefix) = ts.omega_escape_prefixes(mut_sample.positive_words()).min()
         else {
             break;
@@ -150,11 +152,11 @@ impl OmegaSample {
 mod tests {
     use super::*;
     use crate::passive::OmegaSample;
+    use automata::DTS;
     use automata::automaton::{BuchiCondition, MinEvenParityCondition};
     use automata::core::alphabet::CharAlphabet;
-    use automata::core::{upw, Void};
+    use automata::core::{Void, upw};
     use automata::ts::Sproutable;
-    use automata::DTS;
     use std::collections::HashSet;
 
     #[test]

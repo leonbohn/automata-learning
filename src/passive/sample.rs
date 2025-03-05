@@ -13,7 +13,7 @@ use automata::core::word::{ReducedOmegaWord, Word};
 use itertools::Itertools;
 use tracing::{debug, trace};
 
-use super::dpainf::{dpainf, prefix_consistency_conflicts, SeparatesIdempotents};
+use super::dpainf::{SeparatesIdempotents, dpainf, prefix_consistency_conflicts};
 
 mod split;
 pub use split::{ClassOmegaSample, SplitOmegaSample};
@@ -231,11 +231,11 @@ where
 #[cfg(test)]
 mod tests {
     use crate::passive::SetSample;
+    use automata::TransitionSystem;
     use automata::core::alphabet::CharAlphabet;
     use automata::core::upw;
     use automata::core::word::{PeriodicOmegaWord, Word};
     use automata::representation::CollectTs;
-    use automata::TransitionSystem;
     use itertools::Itertools;
     use tracing::info;
 

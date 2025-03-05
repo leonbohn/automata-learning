@@ -15,11 +15,11 @@ use tracing::{debug, trace};
 
 use crate::{
     passive::{
-        dpainf::{
-            dpainf, iteration_consistency_conflicts, prefix_consistency_conflicts, DpaInfError,
-            SeparatesIdempotents,
-        },
         ClassOmegaSample, SetSample,
+        dpainf::{
+            DpaInfError, SeparatesIdempotents, dpainf, iteration_consistency_conflicts,
+            prefix_consistency_conflicts,
+        },
     },
     prefixtree::prefix_tree,
 };

@@ -3,7 +3,7 @@ use std::{
     fmt::Display,
 };
 
-use automata::{ts::operations::ProductIndex, Class, Pointed, RightCongruence, TransitionSystem};
+use automata::{Class, Pointed, RightCongruence, TransitionSystem, ts::operations::ProductIndex};
 use itertools::Itertools;
 use tracing::{error, trace, warn};
 
@@ -14,7 +14,7 @@ use crate::{
 
 use automata::core::alphabet::Alphabet;
 use automata::core::word::FiniteWord;
-use automata::core::{math, Show, Void};
+use automata::core::{Show, Void, math};
 use automata::representation::{CollectTs, IntoTs};
 use automata::ts::operations::Product;
 use automata::ts::predecessors::PredecessorIterable;
@@ -95,7 +95,9 @@ impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
                     let lname = ldfa.show();
                     let rname = rdfa.show();
                     let congname = lcong.show();
-                    trace!("\t\tConflict found, ({congname}, {lname}) and ({congname}, {rname}) reachable with ({lname}, {rname}) in conflicts");
+                    trace!(
+                        "\t\tConflict found, ({congname}, {lname}) and ({congname}, {rname}) reachable with ({lname}, {rname}) in conflicts"
+                    );
                     return false;
                 }
             }
@@ -349,9 +351,10 @@ where
             if !allow_transitions_into_epsilon && target == initial {
                 continue;
             }
-            assert!(cong
-                .add_edge((source, cong.make_expression(sym), target))
-                .is_none());
+            assert!(
+                cong.add_edge((source, cong.make_expression(sym), target))
+                    .is_none()
+            );
 
             if conflicts.consistent(&cong)
                 && additional_constraints.iter().all(|c| c.consistent(&cong))
@@ -390,7 +393,7 @@ where
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::passive::{dpainf::ConflictRelation, sample::OmegaSample, SetSample};
+    use crate::passive::{SetSample, dpainf::ConflictRelation, sample::OmegaSample};
     use automata::core::alphabet::CharAlphabet;
     use automata::core::upw;
     use automata::{Class, TransitionSystem};

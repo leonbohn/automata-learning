@@ -1,14 +1,14 @@
 use std::cell::RefCell;
 
 use crate::passive::SetSample;
-use automata::automaton::{IntoMooreMachine, MealyLike, MealyMachine, DFA};
+use automata::automaton::{DFA, IntoMooreMachine, MealyLike, MealyMachine};
 use automata::core::alphabet::{Alphabet, Symbol};
 use automata::core::word::{FiniteWord, Word};
-use automata::core::{math::Set, Color, Int, Lattice, Void};
+use automata::core::{Color, Int, Lattice, Void, math::Set};
 use automata::representation::CollectTs;
 use automata::ts::operations::Product;
 use automata::ts::{Deterministic, EdgeColor, StateColor};
-use automata::{ts::operations::MapStateColor, Congruence, TransitionSystem};
+use automata::{Congruence, TransitionSystem, ts::operations::MapStateColor};
 use tracing::trace;
 
 use super::Hypothesis;
@@ -345,7 +345,7 @@ where
 #[cfg(test)]
 mod tests {
     use automata::automaton::MealyMachine;
-    use automata::{TransitionSystem, DTS};
+    use automata::{DTS, TransitionSystem};
 
     use crate::active::LStar;
 

@@ -6,12 +6,12 @@ use automata::automaton::{MealyMachine, MooreMachine};
 use automata::core::alphabet::{Alphabet, CharAlphabet, Symbol};
 use automata::core::dag::Dag;
 use automata::core::word::FiniteWord;
-use automata::core::{math, Color, Int, Show, Void};
+use automata::core::{Color, Int, Show, Void, math};
 use automata::representation::CollectTs;
 use automata::ts::StateIndex;
 use automata::{
-    dot::{DotStateAttribute, Dottable},
     RightCongruence, TransitionSystem,
+    dot::{DotStateAttribute, Dottable},
 };
 
 /// A family of weak priority mappings (FWPM) is a pair (C, M) where C is a

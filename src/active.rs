@@ -20,8 +20,8 @@ pub mod data {
 #[cfg(test)]
 mod tests {
     use automata::{
-        automaton::MealyMachine, dot::Dottable, representation::IntoTs, ts::TSBuilder,
-        TransitionSystem,
+        TransitionSystem, automaton::MealyMachine, dot::Dottable, representation::IntoTs,
+        ts::TSBuilder,
     };
 
     use super::{LStar, MealyOracle};

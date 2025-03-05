@@ -3,12 +3,12 @@
 use super::{Experiment, Experiments};
 use automata::automaton::{MealyMachine, MooreMachine};
 use automata::core::{
+    Color, Void,
     alphabet::{Alphabet, Symbol},
     word::FiniteWord,
-    Color, Void,
 };
 use automata::ts::{Deterministic, StateIndex, SymbolOf};
-use automata::{Pointed, TransitionSystem, DTS};
+use automata::{DTS, Pointed, TransitionSystem};
 
 pub trait Hypothesis: TransitionSystem + Deterministic + Pointed {
     type Output: Color;

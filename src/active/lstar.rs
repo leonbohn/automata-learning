@@ -1,16 +1,16 @@
 use std::{cell::RefCell, fmt::Debug};
 
+use automata::DTS;
 use automata::core::alphabet::Alphabet;
 use automata::core::word::Concat;
 use automata::core::word::FiniteWord;
-use automata::core::{math, Show};
+use automata::core::{Show, math};
 use automata::ts::{ForAlphabet, Sproutable, SymbolOf};
-use automata::DTS;
 use fixedbitset::FixedBitSet;
 use itertools::Itertools;
 use tracing::{debug, info, trace, warn};
 
-use super::{oracle::Oracle, Experiment, Hypothesis, ObservationTable};
+use super::{Experiment, Hypothesis, ObservationTable, oracle::Oracle};
 
 const ITERATION_THRESHOLD: usize = if cfg!(debug_assertions) { 50 } else { 200000 };
 
@@ -348,9 +348,9 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for LStar
 #[cfg(test)]
 mod tests {
     use crate::active::{MealyOracle, MooreOracle, Oracle};
+    use automata::TransitionSystem;
     use automata::automaton::{MealyMachine, MooreMachine};
     use automata::core::alphabet::CharAlphabet;
-    use automata::TransitionSystem;
     use rand::Rng;
     use tracing::trace;
 
@@ -364,7 +364,10 @@ mod tests {
 
             let pre_gen = std::time::Instant::now();
             let ts = automata::random::generate_random_mealy(symbols, max_color, size);
-            trace!("generated mealy for size {size}, symbols {symbols} and max_color {max_color} in {} microseconds", pre_gen.elapsed().as_micros());
+            trace!(
+                "generated mealy for size {size}, symbols {symbols} and max_color {max_color} in {} microseconds",
+                pre_gen.elapsed().as_micros()
+            );
 
             let oracle = MealyOracle::new(&ts);
 
@@ -392,7 +395,10 @@ mod tests {
 
             let pre_gen = std::time::Instant::now();
             let ts = automata::random::generate_random_moore(symbols, max_color, size);
-            trace!("generated Moore for size {size}, symbols {symbols} and max_color {max_color} in {} microseconds", pre_gen.elapsed().as_micros());
+            trace!(
+                "generated Moore for size {size}, symbols {symbols} and max_color {max_color} in {} microseconds",
+                pre_gen.elapsed().as_micros()
+            );
 
             let oracle = MooreOracle::new(ts.clone());
 

@@ -1,14 +1,14 @@
-use automata::automaton::{MealyMachine, DBA, DFA, DPA};
+use automata::automaton::{DBA, DFA, DPA, MealyMachine};
 use automata::core::alphabet::{Alphabet, CharAlphabet};
 use automata::representation::{CollectTs, IntoTs};
-use automata::ts::operations::Product;
 use automata::ts::Deterministic;
+use automata::ts::operations::Product;
 use automata::{
-    ts::{
-        operations::{DefaultIfMissing, MapStateColor},
-        IndexedAlphabet,
-    },
     TransitionSystem,
+    ts::{
+        IndexedAlphabet,
+        operations::{DefaultIfMissing, MapStateColor},
+    },
 };
 use owo_colors::OwoColorize;
 use tracing::{debug, trace};
@@ -20,10 +20,10 @@ pub mod sample;
 pub use sample::{ClassOmegaSample, PeriodicOmegaSample, SetSample, SplitOmegaSample};
 
 use crate::{
+    AnnotatedCongruence,
     active::{CompletingMealyOracle, LStar},
     passive::fwpm::FWPM,
     prefixtree::prefix_tree,
-    AnnotatedCongruence,
 };
 
 use self::precise::PreciseDPA;
@@ -137,13 +137,13 @@ fn characterize_dpa(dpa: DPA) -> OmegaSample {
 #[cfg(test)]
 mod tests {
     use crate::passive::dpa_rpni;
+    use automata::TransitionSystem;
     use automata::core::alphabet::CharAlphabet;
     use automata::core::upw;
     use automata::representation::CollectTs;
-    use automata::TransitionSystem;
     use tracing::info;
 
-    use super::{sample, OmegaSample};
+    use super::{OmegaSample, sample};
 
     #[test]
     fn infer_precise_dpa_with_al_inf_aa() {

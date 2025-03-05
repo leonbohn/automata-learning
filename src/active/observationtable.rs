@@ -19,7 +19,8 @@ impl<S> Experiment<S> {
 }
 
 impl<S: Symbol> FiniteWord for Experiment<S> {
-    type Symbols<'this> = std::iter::Cloned<std::slice::Iter<'this, S>>
+    type Symbols<'this>
+        = std::iter::Cloned<std::slice::Iter<'this, S>>
     where
         Self: 'this;
 

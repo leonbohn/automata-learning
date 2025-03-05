@@ -3,14 +3,14 @@ use std::fmt::Debug;
 use super::fwpm::FWPM;
 use automata::automaton::{DFA, DPA};
 use automata::core::alphabet::{Alphabet, Matcher};
-use automata::core::{math, Int, Show, Void};
+use automata::core::{Int, Show, Void, math};
 use automata::representation::CollectTs;
 use automata::ts::{
     Deterministic, EdgeExpression, ForAlphabet, IsEdge, Sproutable, StateColor, StateIndex,
 };
 use automata::{
+    DTS, Pointed, RightCongruence, TransitionSystem,
     dot::{DotStateAttribute, DotTransitionAttribute, Dottable},
-    Pointed, RightCongruence, TransitionSystem, DTS,
 };
 use itertools::Itertools;
 use tracing::{debug, info};
@@ -517,9 +517,9 @@ impl<A: Alphabet, const N: usize> Dottable for PreciseDPA<A, N> {
 
 #[cfg(test)]
 mod tests {
-    use automata::core::alphabet::CharAlphabet;
     use automata::core::Void;
-    use automata::{TransitionSystem, DTS};
+    use automata::core::alphabet::CharAlphabet;
+    use automata::{DTS, TransitionSystem};
 
     use super::PreciseDPA;
 
