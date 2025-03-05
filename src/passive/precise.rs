@@ -272,14 +272,19 @@ impl<A: Alphabet, const N: usize> TransitionSystem for PreciseDPA<A, N> {
 
     type EdgeColor = Int;
 
-    type EdgeRef<'this> = PreciseDPATransition<'this, A, N>
+    type EdgeRef<'this>
+        = PreciseDPATransition<'this, A, N>
     where
         Self: 'this;
 
-    type EdgesFromIter<'this> = PreciseDPAEdgesFrom<'this, A, N>
+    type EdgesFromIter<'this>
+        = PreciseDPAEdgesFrom<'this, A, N>
     where
         Self: 'this;
-    type StateIndices<'this> = automata::ts::Reachable<'this, Self, false> where Self: 'this;
+    type StateIndices<'this>
+        = automata::ts::Reachable<'this, Self, false>
+    where
+        Self: 'this;
 
     type Alphabet = A;
 
@@ -369,7 +374,7 @@ impl<A: Alphabet, const N: usize> PreciseDPA<A, N> {
     }
 
     /// Given a [`PState`], returns an iterator over the DFAs that are currently active.
-    pub fn dfas<'a>(&'a self, q: &'a PState<N>) -> impl Iterator<Item = &DFA<A>> + 'a {
+    pub fn dfas<'a>(&'a self, q: &'a PState<N>) -> impl Iterator<Item = &'a DFA<A>> + 'a {
         q.progress_classes()
             .enumerate()
             .map(move |(i, c)| &self.dfas[c as usize][i])

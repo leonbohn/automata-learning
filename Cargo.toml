@@ -1,7 +1,7 @@
 [package]
 name = "automata-learning"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 tracing = { workspace = true }
@@ -13,9 +13,9 @@ crossbeam-channel = { workspace = true }
 rand = { workspace = true }
 tabled = { workspace = true }
 
-owo-colors = "4.1.0"
+owo-colors = "4.2.0"
 alea = "0.2"
-either = "1.13.0"
+either = "1.14.0"
 paste = "1.0"
 fixedbitset = "0.5.7"
 
@@ -25,7 +25,7 @@ automata = { path = "../automata", features = ["hoa", "render", "graphviz"] }
 default = []
 
 [dev-dependencies]
-test-log = { version = "0.2.16", features = ["trace"] }
+test-log = { version = "0.2.17", features = ["trace"] }
 # [[bin]]
 # name = "coal"
 # path = "src/bin/coal.rs"

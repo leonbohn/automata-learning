@@ -291,7 +291,7 @@ impl<'a, A: Alphabet> SeparatesIdempotents<'a, A> {
     }
 }
 
-impl<'a, A: Alphabet> ConsistencyCheck<A> for SeparatesIdempotents<'a, A> {
+impl<A: Alphabet> ConsistencyCheck<A> for SeparatesIdempotents<'_, A> {
     fn consistent(&self, cong: &RightCongruence<A>) -> bool {
         true
     }

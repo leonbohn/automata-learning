@@ -15,7 +15,7 @@ pub struct ClassOmegaSample<'a, A: Alphabet> {
     sample: OmegaSample<A>,
 }
 
-impl<'a, A: Alphabet> std::ops::Deref for ClassOmegaSample<'a, A> {
+impl<A: Alphabet> std::ops::Deref for ClassOmegaSample<'_, A> {
     type Target = OmegaSample<A>;
 
     fn deref(&self) -> &Self::Target {
@@ -23,7 +23,7 @@ impl<'a, A: Alphabet> std::ops::Deref for ClassOmegaSample<'a, A> {
     }
 }
 
-impl<'a, A: Alphabet> std::ops::DerefMut for ClassOmegaSample<'a, A> {
+impl<A: Alphabet> std::ops::DerefMut for ClassOmegaSample<'_, A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.sample
     }
@@ -100,7 +100,7 @@ impl<'a, A: Alphabet> SplitOmegaSample<'a, A> {
     }
 }
 
-impl<'a, A: Alphabet> SplitOmegaSample<'a, A> {
+impl<A: Alphabet> SplitOmegaSample<'_, A> {
     /// Infers a family of right congruences bz first constructing a conflict relation which is then used
     /// as a constraint for the sprout/glerc algorithm.
     pub fn infer_forc(&self) -> FORC<A> {
