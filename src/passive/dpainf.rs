@@ -466,7 +466,7 @@ pub(crate) mod tests {
     }
 
     fn testing_smaller_forc_smaple() -> (CharAlphabet, OmegaSample<CharAlphabet, bool>) {
-        let alphabet = CharAlphabet::of_size(3);
+        let alphabet = alphabet!(simple 'a', 'b', 'c');
         (
             alphabet.clone(),
             Sample::new_omega_from_pos_neg(

@@ -4,7 +4,6 @@ use automata::prelude::*;
 use fixedbitset::FixedBitSet;
 use itertools::Itertools;
 use tracing::{debug, info, trace};
-use word::Concat;
 
 use super::{oracle::Oracle, Experiment, ObservationTable};
 

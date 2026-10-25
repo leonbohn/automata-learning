@@ -522,7 +522,7 @@ mod tests {
 
     #[test]
     fn precise_dpa() {
-        let alph = CharAlphabet::of_size(3);
+        let alph = alphabet!(simple 'a', 'b', 'c');
 
         let cong = DTS::builder()
             .with_transitions([
