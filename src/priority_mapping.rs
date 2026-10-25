@@ -213,7 +213,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             .state_indices()
             .map(|i| {
                 let cls = rc.state_to_mr(i).unwrap();
-                let out = if !cls.is_empty() && rc.is_idempotent(i) {
+                let out = if !cls.is_empty() && rc.is_idempotent(i) == Some(true) {
                     let b = f.classify(cls);
                     Annotation::new(true, b)
                 } else {

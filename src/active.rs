@@ -21,14 +21,14 @@ pub mod data {
 mod tests {
     use automata::{
         TransitionSystem, automaton::MealyMachine, dot::Dottable, representation::IntoTs,
-        ts::TSBuilder,
+        ts::Builder,
     };
 
     use super::{LStar, MealyOracle};
 
     #[test]
     fn lstar_mealy() {
-        let target = TSBuilder::without_state_colors()
+        let target = Builder::without_state_colors()
             .with_edges([
                 (0, 'a', 0, 0),
                 (0, 'b', 1, 1),
