@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 
-use automata::core::alphabet::Alphabet;
-use automata::core::math;
-use automata::core::word::{OmegaWord, ReducedOmegaWord};
+use automata::alphabet::Alphabet;
+use automata::math;
 use automata::ts::{Sproutable, StateIndex};
+use automata::word::{OmegaWord, ReducedOmegaWord};
 use automata::{Pointed, RightCongruence};
 use itertools::Itertools;
 use tracing::trace;

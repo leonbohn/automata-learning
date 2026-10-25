@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 
 use super::precise::PreciseDPA;
+use automata::alphabet::Alphabet;
 use automata::automaton::MooreMachine;
-use automata::core::alphabet::Alphabet;
-use automata::core::math;
+use automata::math;
 use automata::ts::StateIndex;
 use automata::{RightCongruence, TransitionSystem};
 use itertools::Itertools;

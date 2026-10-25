@@ -24,7 +24,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 - `src/priority_mapping.rs`: annotated congruences and weak priority mappings used by the passive omega learners.
 - `src/prefixtree.rs`: internal prefix tree.
 
-The crate uses `automata::core::...` paths (alphabets, words) and the `hoa`, `render`, `graphviz` features of `automata`.
+The crate uses `automata::alphabet`, `automata::word`, `automata::math` etc. and the `hoa`, `render`, `graphviz` features of `automata`.
 
 ## Known sharp edges
 

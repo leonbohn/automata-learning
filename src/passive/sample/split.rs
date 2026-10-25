@@ -1,6 +1,6 @@
 use crate::passive::dpainf::{dpainf, iteration_consistency_conflicts};
-use automata::core::alphabet::Alphabet;
-use automata::core::math;
+use automata::alphabet::Alphabet;
+use automata::math;
 use automata::ts::{Deterministic, StateIndex};
 use automata::{Class, RightCongruence, families::FORC};
 use itertools::Itertools;

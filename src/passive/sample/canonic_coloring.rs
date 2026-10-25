@@ -1,6 +1,6 @@
 use crate::priority_mapping::ClassifiesIdempotents;
-use automata::core::alphabet::{Alphabet, Symbol};
-use automata::core::word::FiniteWord;
+use automata::alphabet::{Alphabet, Symbol};
+use automata::word::FiniteWord;
 
 use super::PeriodicOmegaSample;
 

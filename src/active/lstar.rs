@@ -1,11 +1,11 @@
 use std::{cell::RefCell, fmt::Debug};
 
 use automata::DTS;
-use automata::core::alphabet::Alphabet;
-use automata::core::word::Concat;
-use automata::core::word::FiniteWord;
-use automata::core::{Show, math};
+use automata::alphabet::Alphabet;
 use automata::ts::{ForAlphabet, Sproutable, SymbolOf};
+use automata::word::Concat;
+use automata::word::FiniteWord;
+use automata::{Show, math};
 use fixedbitset::FixedBitSet;
 use itertools::Itertools;
 use tracing::{debug, info, trace, warn};
@@ -349,8 +349,8 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for LStar
 mod tests {
     use crate::active::{MealyOracle, MooreOracle, Oracle};
     use automata::TransitionSystem;
+    use automata::alphabet::CharAlphabet;
     use automata::automaton::{MealyMachine, MooreMachine};
-    use automata::core::alphabet::CharAlphabet;
     use rand::Rng;
     use tracing::trace;
 

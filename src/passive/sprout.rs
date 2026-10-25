@@ -7,11 +7,11 @@ use itertools::Itertools;
 use tracing::{error, info, trace, warn};
 
 use crate::prefixtree::prefix_tree;
+use automata::Void;
+use automata::alphabet::CharAlphabet;
 use automata::automaton::{Automaton, WithInitial};
-use automata::core::Void;
-use automata::core::alphabet::CharAlphabet;
-use automata::core::word::OmegaWord;
 use automata::ts::{Deterministic, Shrinkable, Sproutable, run};
+use automata::word::OmegaWord;
 use std::{collections::HashSet, fmt::Debug, path::Iter};
 
 use super::OmegaSample;
@@ -153,10 +153,10 @@ mod tests {
     use super::*;
     use crate::passive::OmegaSample;
     use automata::DTS;
+    use automata::alphabet::CharAlphabet;
     use automata::automaton::{BuchiCondition, MinEvenParityCondition};
-    use automata::core::alphabet::CharAlphabet;
-    use automata::core::{Void, upw};
     use automata::ts::Sproutable;
+    use automata::{Void, upw};
     use std::collections::HashSet;
 
     #[test]

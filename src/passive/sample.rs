@@ -7,9 +7,9 @@ use std::{
 };
 
 use crate::{passive::dpainf::iteration_consistency_conflicts, prefixtree::prefix_tree};
-use automata::core::alphabet::{Alphabet, CharAlphabet, Symbol};
-use automata::core::math;
-use automata::core::word::{ReducedOmegaWord, Word};
+use automata::alphabet::{Alphabet, CharAlphabet, Symbol};
+use automata::math;
+use automata::word::{ReducedOmegaWord, Word};
 use itertools::Itertools;
 use tracing::{debug, trace};
 
@@ -232,10 +232,10 @@ where
 mod tests {
     use crate::passive::SetSample;
     use automata::TransitionSystem;
-    use automata::core::alphabet::CharAlphabet;
-    use automata::core::upw;
-    use automata::core::word::{PeriodicOmegaWord, Word};
+    use automata::alphabet::CharAlphabet;
     use automata::representation::CollectTs;
+    use automata::upw;
+    use automata::word::{PeriodicOmegaWord, Word};
     use itertools::Itertools;
     use tracing::info;
 

@@ -1,5 +1,5 @@
+use automata::alphabet::{Alphabet, CharAlphabet};
 use automata::automaton::{DBA, DFA, DPA, MealyMachine};
-use automata::core::alphabet::{Alphabet, CharAlphabet};
 use automata::representation::{CollectTs, IntoTs};
 use automata::ts::Deterministic;
 use automata::ts::operations::Product;
@@ -138,9 +138,9 @@ fn characterize_dpa(dpa: DPA) -> OmegaSample {
 mod tests {
     use crate::passive::dpa_rpni;
     use automata::TransitionSystem;
-    use automata::core::alphabet::CharAlphabet;
-    use automata::core::upw;
+    use automata::alphabet::CharAlphabet;
     use automata::representation::CollectTs;
+    use automata::upw;
     use tracing::info;
 
     use super::{OmegaSample, sample};

@@ -2,13 +2,13 @@ use std::fmt::Debug;
 
 use owo_colors::OwoColorize;
 
+use automata::alphabet::{Alphabet, CharAlphabet, Symbol};
 use automata::automaton::{MealyMachine, MooreMachine};
-use automata::core::alphabet::{Alphabet, CharAlphabet, Symbol};
-use automata::core::dag::Dag;
-use automata::core::word::FiniteWord;
-use automata::core::{Color, Int, Show, Void, math};
+use automata::dag::Dag;
 use automata::representation::CollectTs;
 use automata::ts::StateIndex;
+use automata::word::FiniteWord;
+use automata::{Color, Int, Show, Void, math};
 use automata::{
     RightCongruence, TransitionSystem,
     dot::{DotStateAttribute, Dottable},
@@ -176,7 +176,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             *dag.color_mut(t).expect("This node exists") = Ok(i + offset);
         }
 
-        let state_coloring: automata::core::math::Map<_, _> = self
+        let state_coloring: automata::math::Map<_, _> = self
             .0
             .state_indices()
             .map(|i| {
@@ -209,7 +209,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
         C: Color,
         F: ClassifiesIdempotents<A>,
     {
-        let annotations: automata::core::math::Map<_, _> = rc
+        let annotations: automata::math::Map<_, _> = rc
             .state_indices()
             .map(|i| {
                 let cls = rc.state_to_mr(i).unwrap();

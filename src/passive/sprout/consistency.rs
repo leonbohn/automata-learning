@@ -4,10 +4,10 @@ use std::iter;
 use std::ops::Not;
 
 use crate::prefixtree::prefix_tree;
+use automata::Void;
+use automata::alphabet::{Alphabet, CharAlphabet};
 use automata::automaton::{BuchiCondition, DBA, DPA, MinEvenParityCondition};
-use automata::core::Void;
-use automata::core::alphabet::{Alphabet, CharAlphabet};
-use automata::core::math::OrderedSet;
+use automata::math::OrderedSet;
 use automata::representation::CollectTs;
 use automata::ts::run::InfiniteRunOutput::Successful;
 use automata::ts::{Deterministic, EdgeColor, Sproutable, run};
@@ -438,13 +438,13 @@ where
 mod tests {
     use super::*;
     use crate::passive::OmegaSample;
+    use automata::alphabet::CharAlphabet;
     use automata::automaton::{BuchiCondition, MinEvenParityCondition, WithInitial};
-    use automata::core::alphabet::CharAlphabet;
-    use automata::core::{Void, upw};
     use automata::{
         DTS,
         automaton::{DeterministicOmegaAutomaton, OmegaAcceptanceCondition},
     };
+    use automata::{Void, upw};
 
     // default alphabet
     fn sigma() -> CharAlphabet {

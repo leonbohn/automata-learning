@@ -2,12 +2,12 @@
 
 use super::{Experiment, Experiments};
 use automata::automaton::{MealyMachine, MooreMachine};
-use automata::core::{
+use automata::ts::{Deterministic, StateIndex, SymbolOf};
+use automata::{
     Color, Void,
     alphabet::{Alphabet, Symbol},
     word::FiniteWord,
 };
-use automata::ts::{Deterministic, StateIndex, SymbolOf};
 use automata::{DTS, Pointed, TransitionSystem};
 
 pub trait Hypothesis: TransitionSystem + Deterministic + Pointed {

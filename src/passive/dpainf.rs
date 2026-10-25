@@ -12,13 +12,13 @@ use crate::{
     prefixtree::prefix_tree,
 };
 
-use automata::core::alphabet::Alphabet;
-use automata::core::word::FiniteWord;
-use automata::core::{Show, Void, math};
+use automata::alphabet::Alphabet;
 use automata::representation::{CollectTs, IntoTs};
 use automata::ts::operations::Product;
 use automata::ts::predecessors::PredecessorIterable;
 use automata::ts::{Deterministic, IsEdge, ScalarIndexType, Shrinkable, Sproutable, StateIndex};
+use automata::word::FiniteWord;
+use automata::{Show, Void, math};
 use owo_colors::OwoColorize;
 
 /// Represents a consistency check that can be performed on a congruence. This is used in the
@@ -395,8 +395,8 @@ where
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::passive::{SetSample, dpainf::ConflictRelation, sample::OmegaSample};
-    use automata::core::alphabet::CharAlphabet;
-    use automata::core::upw;
+    use automata::alphabet::CharAlphabet;
+    use automata::upw;
     use automata::{Class, TransitionSystem};
     use itertools::Itertools;
 
