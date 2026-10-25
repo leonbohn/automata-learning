@@ -1,20 +1,22 @@
 [package]
 name = "automata-learning"
 version = "0.1.0"
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-authors.workspace = true
+edition = "2024"
 description = "Passive and active learning algorithms for automata (RPNI-style sprout, DPAInf, L*)."
+repository = "https://github.com/leonbohn/automata-learning"
+homepage = "https://github.com/leonbohn/automata-learning"
+readme = "README.md"
+license = "MIT"
+authors = ["León Bohn <bohn@lics.rwth-aachen.de>"]
 
 [dependencies]
-tracing = { workspace = true }
-itertools = { workspace = true }
-bimap = { workspace = true }
-thiserror = { workspace = true }
-crossbeam-channel = { workspace = true }
-rand = { workspace = true }
-tabled = { workspace = true }
+tracing = "0.1"
+itertools = "0.15"
+bimap = "0.6"
+thiserror = "2.0"
+crossbeam-channel = "0.5.14"
+rand = "0.8.5"
+tabled = { version = "0.16", features = ["ansi"] }
 
 owo-colors = "4.2.0"
 alea = "0.2"
@@ -22,7 +24,7 @@ either = "1.14.0"
 paste = "1.0"
 fixedbitset = "0.5.7"
 
-automata = { path = "../automata", features = ["hoa", "render", "graphviz"] }
+automata = { git = "https://github.com/leonbohn/automata", features = ["hoa", "render", "graphviz"] }
 
 [dev-dependencies]
 test-log = { version = "0.2.17", features = ["trace"] }

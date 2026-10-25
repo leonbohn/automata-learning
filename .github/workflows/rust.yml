@@ -1,0 +1,45 @@
+name: Verify code
+
+on:
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  check_build:
+    name: Verify correct building
+    strategy:
+      matrix:
+        platform:
+          - os_name: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os_name: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal --no-self-update
+      - uses: Swatinem/rust-cache@v2
+      - name: Compile
+        run: cargo build
+
+  checks:
+    name: Run tests, verify documentation and formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install stable --profile minimal --no-self-update
+      - uses: Swatinem/rust-cache@v2
+      - name: Verify correct formatting
+        run: cargo fmt --all --check
+      - name: Ensure that clippy is happy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Verify that documentation contains no invalid links
+        run: cargo doc --no-deps
+      - name: Compile
+        run: cargo build
+      - name: Run all tests and see that there are no regressions
+        run: cargo test --all

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -e
+
+cargo fmt --check
+echo "cargo fmt --check --all passed"
+cargo clippy --all-targets --all-features -- -D warnings
+echo "cargo clippy --all -- -D warnings passed"
+cargo doc --no-deps
+echo "doc tests passed"
+cargo test
+echo "cargo test --all passed"
