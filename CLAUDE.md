@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-`automata-learning` implements learning algorithms for automata on top of the `automata` crate (`leonbohn/automata`, currently a git dependency): passive learning from samples and active learning with membership/equivalence queries. Edition 2024, version 0.1.0, MIT. Mostly research code.
+`automata-learning` implements learning algorithms for automata on top of the `automata` crate (`leonbohn/automata`, from crates.io): passive learning from samples and active learning with membership/equivalence queries. Edition 2024, version 0.1.0, MIT. Mostly research code.
 
 ## History
 
@@ -30,4 +30,4 @@ The crate uses `automata::alphabet`, `automata::word`, `automata::math` etc. and
 
 - `lib.rs` has blanket `allow(missing_docs)` and `allow(unused)`; much code is undocumented.
 - The README is a stub; algorithms are not documented with references.
-- The `automata` dependency is a git dependency on `main`, so a breaking change there breaks this crate; pin a `rev` when stability is needed.
+- The `automata` dependency is the released `0.1` from crates.io. To develop against an unreleased `automata`, use a `[patch.crates-io]` entry with a local path (e.g. in `.cargo/config.toml`).

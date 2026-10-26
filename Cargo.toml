@@ -7,6 +7,7 @@ repository = "https://github.com/leonbohn/automata-learning"
 homepage = "https://github.com/leonbohn/automata-learning"
 readme = "README.md"
 license = "MIT"
+exclude = ["CLAUDE.md", "PLAN.md", ".github/", "scripts/"]
 authors = ["León Bohn <bohn@lics.rwth-aachen.de>"]
 
 [dependencies]
@@ -24,7 +25,10 @@ either = "1.14.0"
 paste = "1.0"
 fixedbitset = "0.5.7"
 
-automata = { git = "https://github.com/leonbohn/automata", features = ["hoa", "random", "render", "graphviz"] }
+automata = { version = "0.1", features = ["hoa", "random", "render", "graphviz"] }
 
 [dev-dependencies]
 test-log = { version = "0.2.17", features = ["trace"] }
+
+[package.metadata.docs.rs]
+all-features = true

@@ -6,4 +6,4 @@
 - [ ] README: scope, feature table of algorithms (passive/active, DFA/Moore/Mealy/omega), runnable examples.
 - [ ] Add `rust-version` and a CI matrix (Linux/macOS/Windows); the current workflow only builds on Windows and macOS.
 - [ ] Re-add benchmarks (`criterion`) for the sprout and L* hot paths.
-- [ ] Decide on publishing to crates.io once `automata` is released.
+- [x] `automata` 0.1.0 is released; `automata-learning` 0.1.0 is ready to publish (`cargo publish --dry-run` passes).
