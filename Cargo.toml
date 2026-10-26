@@ -16,7 +16,7 @@ itertools = "0.15"
 bimap = "0.6"
 thiserror = "2.0"
 crossbeam-channel = "0.5.14"
-rand = "0.8.5"
+rand = "0.10.3"
 tabled = { version = "0.16", features = ["ansi"] }
 
 owo-colors = "4.2.0"
