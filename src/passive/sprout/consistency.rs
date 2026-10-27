@@ -7,7 +7,6 @@ use crate::prefixtree::prefix_tree;
 use automata::Void;
 use automata::alphabet::{Alphabet, CharAlphabet};
 use automata::automaton::{BuchiCondition, DBA, DPA, MinEvenParityCondition};
-use automata::math::OrderedSet;
 use automata::representation::CollectTs;
 use automata::ts::run::InfiniteRunOutput::Successful;
 use automata::ts::{Deterministic, EdgeColor, Sproutable, run};
@@ -15,10 +14,11 @@ use automata::{
     Pointed, TransitionSystem,
     ts::path::{self, LassoIn},
 };
+use std::collections::BTreeSet;
 
 use super::OmegaSample;
 
-type EdgeSet = OrderedSet<(u32, char)>;
+type EdgeSet = BTreeSet<(u32, char)>;
 
 /// Used to define consistency checks on various types of omega acceptance conditions
 /// required by the sprout algorithm for passively learning omega automata

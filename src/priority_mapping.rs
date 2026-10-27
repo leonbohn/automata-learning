@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fmt::Debug;
 
 use owo_colors::OwoColorize;
@@ -149,7 +150,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
                 (Ok(_), _) => unreachable!(),
             });
 
-        let mut seen = math::OrderedSet::default();
+        let mut seen = BTreeSet::default();
         'outer: loop {
             if dag.masked_is_empty(&seen) {
                 break 'outer;
@@ -176,7 +177,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             *dag.color_mut(t).expect("This node exists") = Ok(i + offset);
         }
 
-        let state_coloring: automata::math::Map<_, _> = self
+        let state_coloring: automata::math::FxIndexMap<_, _> = self
             .0
             .state_indices()
             .map(|i| {
@@ -209,7 +210,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
         C: Color,
         F: ClassifiesIdempotents<A>,
     {
-        let annotations: automata::math::Map<_, _> = rc
+        let annotations: automata::math::FxIndexMap<_, _> = rc
             .state_indices()
             .map(|i| {
                 let cls = rc.state_to_mr(i).unwrap();

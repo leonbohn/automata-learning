@@ -4,6 +4,7 @@ use automata::math;
 use automata::ts::{Deterministic, StateIndex};
 use automata::{Class, RightCongruence, families::FORC};
 use itertools::Itertools;
+use std::collections::BTreeMap;
 
 use super::{OmegaSample, SetSample};
 
@@ -60,8 +61,8 @@ impl<'a, A: Alphabet> ClassOmegaSample<'a, A> {
             class,
             sample: SetSample {
                 alphabet,
-                positive: math::Set::default(),
-                negative: math::Set::default(),
+                positive: math::FxIndexSet::default(),
+                negative: math::FxIndexSet::default(),
             },
         }
     }
@@ -72,14 +73,14 @@ impl<'a, A: Alphabet> ClassOmegaSample<'a, A> {
 #[derive(Clone)]
 pub struct SplitOmegaSample<'a, A: Alphabet> {
     congruence: &'a RightCongruence<A>,
-    split: math::OrderedMap<StateIndex, ClassOmegaSample<'a, A>>,
+    split: BTreeMap<StateIndex, ClassOmegaSample<'a, A>>,
 }
 
 impl<'a, A: Alphabet> SplitOmegaSample<'a, A> {
     /// Creates a new object from the given congruence and the split
     pub fn new(
         congruence: &'a RightCongruence<A>,
-        split: math::OrderedMap<StateIndex, ClassOmegaSample<'a, A>>,
+        split: BTreeMap<StateIndex, ClassOmegaSample<'a, A>>,
     ) -> Self {
         Self { congruence, split }
     }
@@ -104,7 +105,7 @@ impl<A: Alphabet> SplitOmegaSample<'_, A> {
     /// Infers a family of right congruences bz first constructing a conflict relation which is then used
     /// as a constraint for the sprout/glerc algorithm.
     pub fn infer_forc(&self) -> FORC<A> {
-        let conflict_relations: math::OrderedMap<_, _> = self
+        let conflict_relations: BTreeMap<_, _> = self
             .classes()
             .map(|c| (c.clone(), iteration_consistency_conflicts(self, c.clone())))
             .collect();

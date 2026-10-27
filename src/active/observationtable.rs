@@ -45,7 +45,7 @@ pub struct OutputRow<X>(pub(super) Vec<X>);
 
 pub struct ObservationTable<S, X> {
     pub(crate) experiments: Vec<Experiment<S>>,
-    pub(crate) outputs: math::Map<Representative<S>, OutputRow<X>>,
+    pub(crate) outputs: math::FxIndexMap<Representative<S>, OutputRow<X>>,
 }
 
 impl<S, X> Default for ObservationTable<S, X>
@@ -64,7 +64,7 @@ where
     pub fn new() -> Self {
         Self {
             experiments: vec![],
-            outputs: math::Map::default(),
+            outputs: math::FxIndexMap::default(),
         }
     }
 

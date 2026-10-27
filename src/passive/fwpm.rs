@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 
 use super::precise::PreciseDPA;
@@ -15,7 +16,7 @@ use itertools::Itertools;
 #[derive(Clone)]
 pub struct FWPM<A: Alphabet> {
     leading: RightCongruence<A>,
-    pm: math::OrderedMap<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
+    pm: BTreeMap<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
 }
 
 impl<A: Alphabet> FWPM<A> {
@@ -23,7 +24,7 @@ impl<A: Alphabet> FWPM<A> {
     pub fn empty<O: ToOwned<Owned = RightCongruence<A>>>(leading: O) -> Self {
         Self {
             leading: leading.to_owned(),
-            pm: math::OrderedMap::default(),
+            pm: BTreeMap::default(),
         }
     }
 
@@ -67,7 +68,7 @@ impl<A: Alphabet> FWPM<A> {
     /// with a priority mapping. Ensures that the each class has a priority mapping.
     pub fn new(
         leading: RightCongruence<A>,
-        pm: math::OrderedMap<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
+        pm: BTreeMap<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
     ) -> Self {
         assert_eq!(
             leading.size(),
