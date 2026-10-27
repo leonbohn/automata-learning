@@ -44,8 +44,8 @@ fn right_congruence_by_omega_words<M: Congruence<EdgeColor = Int>>(
 ) -> OmegaSample<M::Alphabet, bool> {
     let start = std::time::Instant::now();
 
-    let mut pos = math::Set::default();
-    let mut neg = math::Set::default();
+    let mut pos = math::FxIndexSet::default();
+    let mut neg = math::FxIndexSet::default();
 
     let class_count = cong.partition().size();
     for mtr in cong.minimal_transition_representatives() {

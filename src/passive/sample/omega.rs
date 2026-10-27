@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::{collections::VecDeque, io::BufRead};
 
 use automata::alphabet::{Alphabet, CharAlphabet};
@@ -91,7 +92,7 @@ impl OmegaSample<CharAlphabet> {
             return Err(OmegaSampleParseError::MalformedSample);
         }
 
-        let mut words = math::Map::default();
+        let mut words = math::FxIndexMap::default();
         'positive: loop {
             match lines.next() {
                 Some(word) => {
@@ -196,8 +197,8 @@ impl<A: Alphabet> OmegaSample<A> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PeriodicOmegaSample<A: Alphabet> {
     alphabet: A,
-    positive: math::Set<PeriodicOmegaWord<A::Symbol>>,
-    negative: math::Set<PeriodicOmegaWord<A::Symbol>>,
+    positive: math::FxIndexSet<PeriodicOmegaWord<A::Symbol>>,
+    negative: math::FxIndexSet<PeriodicOmegaWord<A::Symbol>>,
 }
 
 impl<A: Alphabet> PeriodicOmegaSample<A> {
@@ -278,7 +279,7 @@ impl<A: Alphabet> OmegaSample<A> {
         );
         let initial = cong.initial();
         // take self as is for epsilon
-        let mut split = math::OrderedMap::default();
+        let mut split = BTreeMap::default();
         split.insert(
             initial,
             ClassOmegaSample::new(cong, Class::epsilon(), self.clone()),

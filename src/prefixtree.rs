@@ -47,7 +47,7 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
         if words.len() == 1 && words[0].loop_index() == 0 {
             build_accepting_loop(&alphabet, &mut tree, state, access, words[0].cycle());
         } else {
-            let mut map: math::Map<_, math::Set<_>> = math::Map::default();
+            let mut map: math::FxIndexMap<_, math::FxIndexSet<_>> = math::FxIndexMap::default();
             for mut word in words {
                 let sym = word.pop_front();
                 debug_assert!(

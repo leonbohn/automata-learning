@@ -49,11 +49,11 @@ impl<A: Alphabet, CC: ConsistencyCheck<A>> ConsistencyCheck<A> for &CC {
 
 impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A> {
     fn consistent(&self, cong: &RightCongruence<A>) -> bool {
-        let positive_indices: math::OrderedSet<_> = self
+        let positive_indices: BTreeSet<_> = self
             .positive_words()
             .filter_map(|w| cong.reached_state_index(w))
             .collect();
-        let negative_indices: math::OrderedSet<_> = self
+        let negative_indices: BTreeSet<_> = self
             .negative_words()
             .filter_map(|w| cong.reached_state_index(w))
             .collect();
@@ -69,11 +69,11 @@ impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A> {
     }
 }
 
-/// Stores two DFAs and a math::Set of conflicts between them.
+/// Stores two DFAs and a math::FxIndexSet of conflicts between them.
 #[derive(Clone)]
 pub struct ConflictRelation<A: Alphabet> {
     dfas: [RightCongruence<A>; 2],
-    conflicts: math::OrderedSet<(StateIndex, StateIndex)>,
+    conflicts: BTreeSet<(StateIndex, StateIndex)>,
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
@@ -167,7 +167,7 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
         .intersection(&looping_words)
         .collect_dfa();
 
-    let mut conflicts = math::OrderedSet::default();
+    let mut conflicts = BTreeSet::default();
     let mut queue = VecDeque::from_iter(
         left_pta
             .accepting_states()
@@ -244,7 +244,7 @@ pub fn prefix_consistency_conflicts<A: Alphabet>(sample: &OmegaSample<A>) -> Con
         .flatten()
         .collect();
 
-    let mut conflicts = math::OrderedSet::default();
+    let mut conflicts = BTreeSet::default();
     for ProductIndex(l, r) in dfa.state_indices() {
         let reachable = dfa
             .reachable_state_indices_from(ProductIndex(l, r))
@@ -331,7 +331,7 @@ where
     let initial = cong.initial();
     let threshold = conflicts.threshold();
 
-    // We maintain a math::Set of missing transitions and go through them in order of creation for the states and in order
+    // We maintain a math::FxIndexSet of missing transitions and go through them in order of creation for the states and in order
     // give by alphabet for the symbols for one state (this amouts to BFS).
     let mut queue: VecDeque<_> = conflicts
         .alphabet()

@@ -57,8 +57,8 @@ pub trait Sample<A: Alphabet> {
 #[allow(missing_docs)]
 pub struct SetSample<A: Alphabet, W: Word<Symbol = A::Symbol> + Hash> {
     pub alphabet: A,
-    pub positive: math::Set<W>,
-    pub negative: math::Set<W>,
+    pub positive: math::FxIndexSet<W>,
+    pub negative: math::FxIndexSet<W>,
 }
 
 /// Type alias for samples over the alphabet `A`, containing finite words which are classified with color `C`,
@@ -97,8 +97,8 @@ impl<A: Alphabet, W: Word<Symbol = A::Symbol>> SetSample<A, W> {
     pub fn new_for_alphabet(alphabet: A) -> Self {
         Self {
             alphabet,
-            positive: math::Set::default(),
-            negative: math::Set::default(),
+            positive: math::FxIndexSet::default(),
+            negative: math::FxIndexSet::default(),
         }
     }
 

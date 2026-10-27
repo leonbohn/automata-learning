@@ -7,7 +7,7 @@ use automata::representation::CollectTs;
 use automata::ts::operations::Product;
 use automata::ts::{Deterministic, EdgeColor, StateColor};
 use automata::word::{FiniteWord, Word};
-use automata::{Color, Int, Lattice, Void, math::Set};
+use automata::{Color, Int, Lattice, Void, math::FxIndexSet};
 use automata::{Congruence, TransitionSystem, ts::operations::MapStateColor};
 use tracing::trace;
 
@@ -218,7 +218,7 @@ impl<A: Alphabet, C: Color + Lattice> Oracle for MealyOracle<A, C> {
 pub struct CompletingMealyOracle<A: Alphabet, C: Color = Int> {
     automaton: MealyMachine<A, Void, C>,
     default: C,
-    missed: RefCell<Set<Vec<A::Symbol>>>,
+    missed: RefCell<FxIndexSet<Vec<A::Symbol>>>,
 }
 
 impl<A: Alphabet, C: Color> CompletingMealyOracle<A, C> {
@@ -227,7 +227,7 @@ impl<A: Alphabet, C: Color> CompletingMealyOracle<A, C> {
         Self {
             automaton: automaton.erase_state_colors().collect_mealy(),
             default,
-            missed: RefCell::new(Set::default()),
+            missed: RefCell::new(FxIndexSet::default()),
         }
     }
     pub fn alphabet(&self) -> &A {
