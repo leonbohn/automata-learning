@@ -1,14 +1,14 @@
-use std::cell::RefCell;
+// use std::cell::RefCell;
 
 use crate::passive::SetSample;
-use automata::alphabet::{Alphabet, Symbol};
+use automata::alphabet::Alphabet;
 use automata::automaton::{DFA, MealyLike, MealyMachine, MooreMachine};
 use automata::representation::CollectPointed;
 use automata::ts::Deterministic;
 use automata::ts::operations::Product;
 use automata::word::{FiniteWord, Word};
-use automata::{Color, DTS, Int, Lattice, Pointed, States, TransitionSystem, Void, math::FxIndexSet};
-use tracing::trace;
+use automata::{Color, DTS, Int, Lattice, Pointed, States, TransitionSystem, Void};
+// use automata::math::FxIndexSet;
 
 use super::Hypothesis;
 
@@ -65,14 +65,14 @@ impl<A: Alphabet, X: FiniteWord<Symbol = A::Symbol>> Oracle for SampleOracle<A, 
 
     fn output<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
-        word: W,
+        _word: W,
     ) -> Self::Output {
         todo!()
     }
 
     fn equivalence<H>(
         &self,
-        hypothesis: &H,
+        _hypothesis: &H,
     ) -> Result<(), Counterexample<Self::Alphabet, Self::Output>>
     where
         H: Hypothesis<Alphabet = Self::Alphabet, Output = Self::Output>,
@@ -113,14 +113,15 @@ impl<A: Alphabet, W: FiniteWord<Symbol = A::Symbol>> From<(SetSample<A, W>, bool
 #[derive(Debug, Clone)]
 pub struct DFAOracle<A: Alphabet> {
     automaton: DFA<DTS<A, bool, Void>>,
-    negated: DFA<DTS<A, bool, Void>>,
+//     negated: DFA<DTS<A, bool, Void>>,
 }
 
 impl<A: Alphabet> DFAOracle<A> {
     /// Creates a new instance of a [`DFAOracle`] from the given automaton.
     pub fn new(automaton: DFA<DTS<A, bool, Void>>) -> Self {
-        let negated = automaton.negation().reachable_part().collect_dfa();
-        Self { negated, automaton }
+//         let negated = automaton.negation().reachable_part().collect_dfa();
+        Self { automaton }
+        // Self { negated, automaton }
     }
 }
 
@@ -217,7 +218,7 @@ impl<A: Alphabet, C: Color + Lattice + Eq + std::hash::Hash> Oracle for MealyOra
 pub struct CompletingMealyOracle<A: Alphabet, C: Color = Int> {
     automaton: MealyMachine<DTS<A, Void, C>>,
     default: C,
-    missed: RefCell<FxIndexSet<Vec<A::Symbol>>>,
+//     missed: RefCell<FxIndexSet<Vec<A::Symbol>>>,
 }
 
 impl<A: Alphabet, C: Color> CompletingMealyOracle<A, C> {
@@ -229,7 +230,7 @@ impl<A: Alphabet, C: Color> CompletingMealyOracle<A, C> {
         Self {
             automaton: automaton.erase_state_colors().collect_mealy(),
             default,
-            missed: RefCell::new(FxIndexSet::default()),
+//             missed: RefCell::new(FxIndexSet::default()),
         }
     }
     pub fn alphabet(&self) -> &A {
@@ -344,7 +345,7 @@ impl<D: Deterministic> MooreOracle<MooreMachine<D>> {
 #[cfg(test)]
 mod tests {
     use automata::automaton::MealyMachine;
-    use automata::{DTS, States, TransitionSystem};
+    use automata::{DTS, States};
 
     use crate::active::LStar;
 

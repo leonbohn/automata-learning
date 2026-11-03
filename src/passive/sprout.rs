@@ -2,7 +2,7 @@
 mod consistency;
 pub use consistency::*;
 
-use automata::{DTS, Pointed, States, TransitionSystem};
+use automata::{DTS, Pointed, States};
 use itertools::Itertools;
 use tracing::{error, info, trace};
 
@@ -30,7 +30,7 @@ impl<A: ConsistencyCheck<WithInitial<DTS>>> Debug for SproutError<A> {
             f,
             "{}",
             match self {
-                Timeout { aut } => "reached timeout".to_string(),
+                Timeout { aut: _ } => "reached timeout".to_string(),
                 Threshold { thres, aut } => format!(
                     "exceeded threshold {thres} with automaton of size {}",
                     aut.state_count()
@@ -156,7 +156,7 @@ mod tests {
     use automata::automaton::{BuchiCondition, MinEvenParityCondition};
     use automata::ts::Sproutable;
     use automata::{Void, upw};
-    use std::collections::HashSet;
+    
 
     #[test]
     fn sprout_buchi_successful() {
@@ -204,7 +204,7 @@ mod tests {
         );
 
         // build dba
-        let mut dba = DTS::builder()
+        let dba = DTS::builder()
             .with_transitions([
                 (0, 'a', true, 1),
                 (0, 'b', true, 2),
@@ -222,7 +222,7 @@ mod tests {
             .default_color(Void)
             .into_dba(0);
 
-        let Err(SproutError::Threshold { thres: t, aut: res }) = sprout(sample, BuchiCondition)
+        let Err(SproutError::Threshold { thres: _t, aut: res }) = sprout(sample, BuchiCondition)
         else {
             panic!("expected to hit threshold");
         };
@@ -283,7 +283,7 @@ mod tests {
             .into_dpa(0);
         dpa.complete_with_colors(Void, 1);
 
-        let Err(SproutError::Threshold { thres: t, aut: res }) =
+        let Err(SproutError::Threshold { thres: _t, aut: res }) =
             sprout(sample, MinEvenParityCondition)
         else {
             panic!("expected threshold to be exceeded");

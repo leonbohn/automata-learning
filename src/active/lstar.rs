@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt::Debug};
+use std::cell::RefCell;
 
 use automata::DTS;
 use automata::alphabet::Alphabet;
@@ -6,11 +6,11 @@ use automata::ts::{ForAlphabet, Sproutable, SymbolOf};
 use automata::word::Concat;
 use automata::word::FiniteWord;
 use automata::math;
-use fixedbitset::FixedBitSet;
 use itertools::Itertools;
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, trace};
 
-use super::{Experiment, Hypothesis, ObservationTable, oracle::Oracle};
+use super::{Experiment, Hypothesis, oracle::Oracle};
+// use super::ObservationTable;
 
 const ITERATION_THRESHOLD: usize = if cfg!(debug_assertions) { 50 } else { 200000 };
 
@@ -32,17 +32,17 @@ pub struct LStar<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> {
     table: std::collections::BTreeMap<Word<D>, Vec<D::Output>>,
     // the oracle
     oracle: T,
-    observations: ObservationTable<SymbolOf<D>, T::Output>,
+//     observations: ObservationTable<SymbolOf<D>, T::Output>,
 }
 
 impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar<D, T> {
     pub fn new(alphabet: D::Alphabet, oracle: T) -> Self {
         Self {
             experiments: D::mandatory_experiments(&alphabet).into_iter().collect(),
-            observations: ObservationTable::with_rows_and_experiments(
-                [],
-                D::mandatory_experiments(&alphabet),
-            ),
+//             observations: ObservationTable::with_rows_and_experiments(
+//                 [],
+//                 D::mandatory_experiments(&alphabet),
+//             ),
             alphabet,
             queries: RefCell::new(std::collections::BTreeMap::default()),
             base: vec![vec![]],
@@ -63,7 +63,7 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
         let mut updates = vec![];
         let experiment_count = self.experiments.len();
 
-        for (n, mr) in self.one_letter_extensions().enumerate() {
+        for (_n, mr) in self.one_letter_extensions().enumerate() {
             let stored_experiment_count = self.table.get(&mr).map(|r| r.len()).unwrap_or(0);
             if stored_experiment_count < experiment_count {
                 for i in stored_experiment_count..experiment_count {
@@ -83,7 +83,7 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
 
         for (mr, i, output) in updates {
             assert!(i < self.experiments.len());
-            let mut row = self.table.entry(mr).or_default();
+            let row = self.table.entry(mr).or_default();
             row.push(output);
         }
 
@@ -146,7 +146,7 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
         panic!("Iteration threshold exceeded!")
     }
 
-    fn process_counterexample(&mut self, word: Word<D>, color: D::Output) {
+    fn process_counterexample(&mut self, word: Word<D>, _color: D::Output) {
         trace!("Processing counterexample {}", word.as_string());
         for i in 0..(word.len()) {
             let suffix = Experiment(word[i..].to_vec());
@@ -185,7 +185,7 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
         }
 
         if cfg!(debug_assertions) {
-            for (mr, obs) in &self.table {
+            for (_mr, obs) in &self.table {
                 if !observations.contains_key(&obs) {
                     let to_promote = self.rows_to_promote();
                     panic!(
@@ -235,43 +235,43 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
         D::from_transition_system(ts, *state_map.get(&vec![]).unwrap())
     }
 
-    fn inconsistent_words(&self) -> Option<Word<D>> {
-        for (i, left) in self.base.iter().enumerate() {
-            'middle: for right in &self.base[i..] {
-                if self.table.get(left) != self.table.get(right) {
-                    continue 'middle;
-                }
+//     fn inconsistent_words(&self) -> Option<Word<D>> {
+//         for (i, left) in self.base.iter().enumerate() {
+//             'middle: for right in &self.base[i..] {
+//                 if self.table.get(left) != self.table.get(right) {
+//                     continue 'middle;
+//                 }
 
-                for sym in self.alphabet.universe() {
-                    let left_ext = left
-                        .iter()
-                        .chain(std::iter::once(&sym))
-                        .cloned()
-                        .collect_vec();
-                    let right_ext = right
-                        .iter()
-                        .chain(std::iter::once(&sym))
-                        .cloned()
-                        .collect_vec();
+//                 for sym in self.alphabet.universe() {
+//                     let left_ext = left
+//                         .iter()
+//                         .chain(std::iter::once(&sym))
+//                         .cloned()
+//                         .collect_vec();
+//                     let right_ext = right
+//                         .iter()
+//                         .chain(std::iter::once(&sym))
+//                         .cloned()
+//                         .collect_vec();
 
-                    let l = self.table.get(&left_ext).expect("Should be present!");
-                    let r = self.table.get(&right_ext).expect("Should be present!");
+//                     let l = self.table.get(&left_ext).expect("Should be present!");
+//                     let r = self.table.get(&right_ext).expect("Should be present!");
 
-                    if l == r {
-                        continue 'middle;
-                    }
-                    'inner: for (j, e) in self.experiments.iter().enumerate() {
-                        assert!(j < std::cmp::min(l.len(), r.len()));
-                        if l[j] == r[j] {
-                            continue 'inner;
-                        }
-                        return Some(Concat(vec![sym], e).into_vec());
-                    }
-                }
-            }
-        }
-        None
-    }
+//                     if l == r {
+//                         continue 'middle;
+//                     }
+//                     'inner: for (j, e) in self.experiments.iter().enumerate() {
+//                         assert!(j < std::cmp::min(l.len(), r.len()));
+//                         if l[j] == r[j] {
+//                             continue 'inner;
+//                         }
+//                         return Some(Concat(vec![sym], e).into_vec());
+//                     }
+//                 }
+//             }
+//         }
+//         None
+//     }
 
     fn one_letter_extensions(&self) -> impl Iterator<Item = Word<D>> + '_ {
         self.base
@@ -348,7 +348,7 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for LStar
 mod tests {
     use crate::active::{MealyOracle, MooreOracle, Oracle};
     use automata::alphabet::CharAlphabet;
-    use automata::{States, TransitionSystem};
+    use automata::States;
     use automata::automaton::{MealyMachine, MooreMachine};
     use rand::RngExt;
     use tracing::trace;
@@ -356,7 +356,7 @@ mod tests {
     #[test]
     fn lstar_random_mealy() {
         let mut rng = rand::rng();
-        for i in 0..200 {
+        for _i in 0..200 {
             let symbols = rng.random_range(1..5);
             let max_color = rng.random_range(1..10);
             let size = rng.random_range(1..25);
@@ -387,7 +387,7 @@ mod tests {
     #[test]
     fn lstar_random_moore() {
         let mut rng = rand::rng();
-        for i in 0..200 {
+        for _i in 0..200 {
             let symbols = rng.random_range(1..5);
             let max_color = rng.random_range(1..10);
             let size = rng.random_range(1..25);

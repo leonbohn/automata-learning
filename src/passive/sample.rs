@@ -1,19 +1,14 @@
 use std::{
     borrow::Borrow,
-    cell::RefCell,
-    collections::{BTreeSet, VecDeque},
     fmt::Debug,
     hash::Hash,
 };
 
-use crate::{passive::dpainf::iteration_consistency_conflicts, prefixtree::prefix_tree};
-use automata::alphabet::{Alphabet, CharAlphabet, Symbol};
+use automata::alphabet::{Alphabet, CharAlphabet};
 use automata::math;
 use automata::word::{ReducedOmegaWord, Word};
 use itertools::Itertools;
-use tracing::{debug, trace};
 
-use super::dpainf::{SeparatesIdempotents, dpainf, prefix_consistency_conflicts};
 
 mod split;
 pub use split::{ClassOmegaSample, SplitOmegaSample};
@@ -233,14 +228,13 @@ mod tests {
     use crate::passive::SetSample;
     use automata::alphabet::CharAlphabet;
     use automata::ts::q;
-    use automata::{States, TransitionSystem};
+    use automata::TransitionSystem;
     use automata::representation::CollectPointed;
     use automata::upw;
     use automata::word::{PeriodicOmegaWord, Word};
-    use itertools::Itertools;
     use tracing::info;
 
-    use super::ReducedOmegaWord;
+    
 
     #[test]
     fn parse_sample() {
@@ -311,8 +305,8 @@ mod tests {
     #[test]
     #[ignore]
     fn omega_prefix_tree() {
-        let mut w = upw!("aba", "b");
-        let x = w.pop_first();
+        let w = upw!("aba", "b");
+        let _x = w.pop_first();
 
         let words = vec![
             upw!("aba", "b"),

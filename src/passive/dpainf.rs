@@ -1,16 +1,13 @@
-use std::{
-    collections::{BTreeSet, VecDeque},
-    fmt::Display,
-};
+use std::collections::{BTreeSet, VecDeque};
 
 use automata::{
     Class, DTS, Pointed, RightCongruence, States, TransitionSystem, ts::operations::ProductIndex,
 };
 use itertools::Itertools;
-use tracing::{error, trace, warn};
+use tracing::{error, trace};
 
 use crate::{
-    passive::{ClassOmegaSample, FiniteSample, OmegaSample, SetSample, SplitOmegaSample},
+    passive::{ClassOmegaSample, FiniteSample, OmegaSample, SplitOmegaSample},
     prefixtree::prefix_tree,
 };
 
@@ -23,8 +20,7 @@ use automata::ts::{
     StateId,
 };
 use automata::word::FiniteWord;
-use automata::{Void, math};
-use owo_colors::OwoColorize;
+use automata::Void;
 
 /// Represents a consistency check that can be performed on a congruence. This is used in the
 /// omega-sprout algorithm to ensure in each iteration, that the produced congruence relation
@@ -117,7 +113,7 @@ impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
 }
 
 impl<A: Alphabet> std::fmt::Debug for ConflictRelation<A> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         todo!()
     }
 }
@@ -271,7 +267,7 @@ pub fn prefix_consistency_conflicts<A: Alphabet>(sample: &OmegaSample<A>) -> Con
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for () {
-    fn consistent(&self, cong: &RightCongruence<DTS<A>>) -> bool {
+    fn consistent(&self, _cong: &RightCongruence<DTS<A>>) -> bool {
         true
     }
 
@@ -298,7 +294,7 @@ impl<'a, A: Alphabet> SeparatesIdempotents<'a, A> {
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for SeparatesIdempotents<'_, A> {
-    fn consistent(&self, cong: &RightCongruence<DTS<A>>) -> bool {
+    fn consistent(&self, _cong: &RightCongruence<DTS<A>>) -> bool {
         true
     }
 
@@ -400,36 +396,35 @@ pub(crate) mod tests {
     use automata::alphabet::CharAlphabet;
     use automata::upw;
     use automata::ts::q;
-    use automata::{Class, States, TransitionSystem};
-    use itertools::Itertools;
+    use automata::{Class, States};
 
-    pub fn inf_aba_sample() -> (CharAlphabet, OmegaSample<CharAlphabet>) {
-        let Ok(sample) = OmegaSample::try_from_str(
-            r#"omega
-            alphabet: a,b
-            positive:
-            abab
-            aba
-            ababb
-            abaa
-            abaab
-            negative:
-            bab
-            abba
-            bbab
-            aaabb
-            a
-            abb
-            aabb
-            babb
-            b
-            abbba
-            abbb"#,
-        ) else {
-            panic!("Cannot parse sample")
-        };
-        (sample.alphabet.clone(), sample)
-    }
+//     pub fn inf_aba_sample() -> (CharAlphabet, OmegaSample<CharAlphabet>) {
+//         let Ok(sample) = OmegaSample::try_from_str(
+//             r#"omega
+//             alphabet: a,b
+//             positive:
+//             abab
+//             aba
+//             ababb
+//             abaa
+//             abaab
+//             negative:
+//             bab
+//             abba
+//             bbab
+//             aaabb
+//             a
+//             abb
+//             aabb
+//             babb
+//             b
+//             abbba
+//             abbb"#,
+//         ) else {
+//             panic!("Cannot parse sample")
+//         };
+//         (sample.alphabet.clone(), sample)
+//     }
 
     pub fn testing_larger_forc_sample() -> (CharAlphabet, OmegaSample<CharAlphabet>) {
         let Ok(sample) = OmegaSample::try_from_str(
@@ -508,13 +503,13 @@ pub(crate) mod tests {
 
     #[test]
     fn learn_small_forc() {
-        let (alphabet, sample) = testing_smaller_forc_smaple();
+        let (_alphabet, sample) = testing_smaller_forc_smaple();
         let cong = sample.infer_prefix_congruence().unwrap();
         assert_eq!(cong.state_count(), 1);
 
         let split_sample = sample.split(&cong);
         let eps = Class::epsilon();
-        let eps_sample = split_sample.get(q(0)).unwrap();
+        let _eps_sample = split_sample.get(q(0)).unwrap();
 
         let conflicts: ConflictRelation<CharAlphabet> =
             super::iteration_consistency_conflicts(&split_sample, eps);
@@ -525,7 +520,7 @@ pub(crate) mod tests {
 
     #[test_log::test]
     fn learn_larger_forc() {
-        let (alphabet, sample) = testing_larger_forc_sample();
+        let (_alphabet, sample) = testing_larger_forc_sample();
         let cong = sample.infer_prefix_congruence().unwrap();
         tracing::debug!("Got prefix congruence");
         let split = sample.split(&cong);

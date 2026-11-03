@@ -15,7 +15,7 @@ use crate::{
     passive::{
         ClassOmegaSample, SetSample,
         dpainf::{
-            DpaInfError, SeparatesIdempotents, dpainf, iteration_consistency_conflicts,
+            DpaInfError, dpainf,
             prefix_consistency_conflicts,
         },
     },
@@ -102,7 +102,7 @@ impl OmegaSample<CharAlphabet> {
                     }
                     let parsed = ReducedOmegaWord::try_from_str(word)
                         .map_err(OmegaSampleParseError::OmegaWordParseError)?;
-                    if let Some(old_classification) = words.insert(parsed, true) {
+                    if let Some(_old_classification) = words.insert(parsed, true) {
                         debug!("Duplicate positive word found");
                     }
                 }
@@ -132,8 +132,8 @@ impl OmegaSample<CharAlphabet> {
         Self::try_from_lines(input.lines().map(|l| l.to_string()))
     }
 
-    pub fn try_from_read<R: BufRead>(mut read: R) -> Result<Self, OmegaSampleParseError> {
-        let mut lines = read.lines().filter_map(|line| {
+    pub fn try_from_read<R: BufRead>(read: R) -> Result<Self, OmegaSampleParseError> {
+        let lines = read.lines().filter_map(|line| {
             let line = line.expect("unable to parse line!").trim().to_string();
             if !line.is_empty() && !line.starts_with('#') {
                 None

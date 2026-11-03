@@ -1,62 +1,19 @@
 use std::fmt::Debug;
 
-use owo_colors::OwoColorize;
 
-use automata::alphabet::{Alphabet, CharAlphabet, Symbol};
+use automata::alphabet::{Alphabet, CharAlphabet};
 use automata::automaton::{MealyMachine, MooreMachine};
 use automata::dag::Dag;
-use automata::representation::{CollectPointed, IntoTransitions};
+use automata::representation::IntoTransitions;
 use automata::ts::operations::DefaultIfMissing;
-use automata::ts::{Sccs, StateId};
+use automata::ts::Sccs;
 use automata::word::FiniteWord;
 use automata::{Color, DTS, Int, Pointed, States, Void};
 use automata::{RightCongruence, TransitionSystem};
 
-/// A family of weak priority mappings (FWPM) is a pair (C, M) where C is a
-/// right congruence relation and for each class c of C, M_c is a Mealy machine.
-/// Each mealy machine M_c is called a component of the FWPM and the mapping
-/// it computes (on non-empty words) is weak in the sense that M_c(xy) <= M_c(x)
-/// for all x and y.
-#[derive(Clone)]
-pub struct FamilyOfWeakPriorityMappings<A: Alphabet = CharAlphabet> {
-    cong: RightCongruence<DTS<A>>,
-    pms: Vec<WeakPriorityMapping<A>>,
-}
-
-impl<A: Alphabet> FamilyOfWeakPriorityMappings<A> {}
-
 /// A priority mapping is essentially a [`MealyMachine`], i.e. it reads
 /// finite words and ouptuts a priority (which in this case is a `usize`).
 pub type WeakPriorityMapping<A = CharAlphabet> = MealyMachine<DTS<A, Void, Int>>;
-
-#[derive(Clone)]
-pub struct SubMapping<'ts, A: Alphabet> {
-    ts: &'ts RightCongruence<DTS<A>>,
-    class: StateId,
-    mm: WeakPriorityMapping<A>,
-}
-
-impl<'ts, A: Alphabet> SubMapping<'ts, A> {
-    pub fn new(
-        ts: &'ts RightCongruence<DTS<A>>,
-        class: StateId,
-        mm: WeakPriorityMapping<A>,
-    ) -> Self {
-        Self { ts, class, mm }
-    }
-
-    pub fn cong(&self) -> &RightCongruence<DTS<A>> {
-        self.ts
-    }
-
-    pub fn class(&self) -> StateId {
-        self.class
-    }
-
-    pub fn mm(&self) -> &WeakPriorityMapping<A> {
-        &self.mm
-    }
-}
 
 /// Stores information on classes/states of a [`RightCongruence`]. This may be
 /// extended in the futuer, but for now it simply stores whether a class c is

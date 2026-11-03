@@ -4,7 +4,7 @@ use super::precise::PreciseDPA;
 use automata::alphabet::Alphabet;
 use automata::automaton::MooreMachine;
 use automata::ts::StateId;
-use automata::{DTS, Int, RightCongruence, States, TransitionSystem, Void};
+use automata::{DTS, Int, RightCongruence, States, Void};
 use itertools::Itertools;
 
 /// This structure represents a family of weak priority mappings (FWPM). It consists of a leading

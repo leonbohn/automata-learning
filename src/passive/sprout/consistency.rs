@@ -248,7 +248,7 @@ where
             prio += 1;
         }
         let mut dpa = ts
-            .map_edge_colors_full(move |a, b, c, d| {
+            .map_edge_colors_full(move |a, b, _c, _d| {
                 *prio_map
                     .get(&(a, *b))
                     .expect("transition missing in Zielonka path")
@@ -434,10 +434,7 @@ mod tests {
     use crate::passive::OmegaSample;
     use automata::alphabet::CharAlphabet;
     use automata::automaton::{BuchiCondition, MinEvenParityCondition, WithInitial};
-    use automata::{
-        DTS,
-        automaton::{DeterministicOmegaAutomaton, OmegaAcceptanceCondition},
-    };
+    use automata::DTS;
     use automata::ts::q;
     use automata::{Void, upw};
 
@@ -700,10 +697,10 @@ mod tests {
             [upw!("a"), upw!("aab")],
             [upw!("b"), upw!("abb")],
         );
-        let sample3: OmegaSample = OmegaSample::new_for_alphabet(sigma());
+        let _sample3: OmegaSample = OmegaSample::new_for_alphabet(sigma());
 
         // build automaton
-        let mut dpa = DTS::builder()
+        let dpa = DTS::builder()
             .with_transitions([
                 (0, 'b', 2, 1),
                 (0, 'a', 0, 0),
@@ -714,7 +711,7 @@ mod tests {
             ])
             .default_color(Void)
             .into_dpa(0);
-        let mut dpa2 = DTS::builder()
+        let dpa2 = DTS::builder()
             .with_transitions([
                 (0, 'a', 0, 0),
                 (0, 'b', 0, 1),

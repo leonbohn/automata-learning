@@ -6,7 +6,7 @@ use automata::automaton::{MealyMachine, MooreMachine};
 use automata::ts::{Deterministic, StateId, SymbolOf};
 use automata::{
     Color, Void,
-    alphabet::{Alphabet, Symbol},
+    alphabet::Alphabet,
     word::FiniteWord,
 };
 use automata::{DTS, Pointed, TransitionSystem};
@@ -69,12 +69,12 @@ impl<A: Alphabet, Q: Color + Eq + Hash> Hypothesis for MooreMachine<DTS<A, Q, Vo
         Self::from_parts(ts, initial)
     }
     fn mandatory_experiments(
-        alphabet: &Self::Alphabet,
+        _alphabet: &Self::Alphabet,
     ) -> impl IntoIterator<Item = Experiment<SymbolOf<Self>>> {
         [Experiment::empty()]
     }
     fn give_state_color(
-        mr: &[SymbolOf<Self>],
+        _mr: &[SymbolOf<Self>],
         experiments: &Experiments<Self>,
         row: &[Self::Output],
     ) -> Self::StateColor {
@@ -89,12 +89,12 @@ impl<A: Alphabet, Q: Color + Eq + Hash> Hypothesis for MooreMachine<DTS<A, Q, Vo
         row[0].clone()
     }
     fn give_transition_color(
-        source_mr: &[SymbolOf<Self>],
-        a: SymbolOf<Self>,
-        target_mr: &[SymbolOf<Self>],
-        experiments: &Experiments<Self>,
+        _source_mr: &[SymbolOf<Self>],
+        _a: SymbolOf<Self>,
+        _target_mr: &[SymbolOf<Self>],
+        _experiments: &Experiments<Self>,
         source_row: &[Self::Output],
-        target_row: &[Self::Output],
+        _target_row: &[Self::Output],
     ) -> Self::EdgeColor {
         assert!(!source_row.is_empty(), "cannot have zero experiments");
         Void
@@ -120,9 +120,9 @@ impl<A: Alphabet, C: Color + Eq + Hash> Hypothesis for MealyMachine<DTS<A, Void,
         Self::from_parts(ts, initial)
     }
     fn give_state_color(
-        mr: &[SymbolOf<Self>],
-        experiments: &Experiments<Self>,
-        row: &[Self::Output],
+        _mr: &[SymbolOf<Self>],
+        _experiments: &Experiments<Self>,
+        _row: &[Self::Output],
     ) -> Self::StateColor {
         Void
     }
@@ -132,12 +132,12 @@ impl<A: Alphabet, C: Color + Eq + Hash> Hypothesis for MealyMachine<DTS<A, Void,
         alphabet.universe().map(|a| Experiment(vec![a]))
     }
     fn give_transition_color(
-        source_mr: &[SymbolOf<Self>],
+        _source_mr: &[SymbolOf<Self>],
         a: SymbolOf<Self>,
-        target_mr: &[SymbolOf<Self>],
+        _target_mr: &[SymbolOf<Self>],
         experiments: &Experiments<Self>,
         source_row: &[Self::Output],
-        target_row: &[Self::Output],
+        _target_row: &[Self::Output],
     ) -> Self::EdgeColor {
         let Some(i) = experiments.iter().position(|b| b.is_letter(a)) else {
             panic!("could not find experiment for {a:?}");

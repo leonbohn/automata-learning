@@ -1,6 +1,6 @@
 use automata::alphabet::{Alphabet, CharAlphabet};
 use automata::automaton::{DBA, DFA, DPA, MealyMachine};
-use automata::representation::{CollectPointed, IntoTransitions};
+use automata::representation::CollectPointed;
 use automata::ts::Deterministic;
 use automata::ts::operations::Product;
 use automata::{DTS, Int, Pointed, TransitionSystem, Void};
@@ -17,7 +17,6 @@ use crate::{
     AnnotatedCongruence,
     active::{CompletingMealyOracle, LStar},
     passive::fwpm::FWPM,
-    prefixtree::prefix_tree,
 };
 
 use self::precise::PreciseDPA;
@@ -52,7 +51,7 @@ pub fn dfa_rpni<A: Alphabet>(sample: &FiniteSample<A>) -> DFA<DTS<A, bool, Void>
 }
 
 /// Executes a variant of the RPNI algorithm for omega-words, producing a DBA.
-pub fn dba_rpni<A: Alphabet>(sample: &OmegaSample<A>) -> DBA<DTS<A, Void, bool>> {
+pub fn dba_rpni<A: Alphabet>(_sample: &OmegaSample<A>) -> DBA<DTS<A, Void, bool>> {
     todo!()
 }
 
@@ -117,22 +116,16 @@ pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet>) -> DPA<DTS<CharAlphabet, Voi
     learned.collect_dpa()
 }
 
-fn characterize_dpa(dpa: DPA) -> OmegaSample {
-    let cong = dpa.prefix_congruence();
-
-    todo!()
-}
-
 #[cfg(test)]
 mod tests {
     use crate::passive::dpa_rpni;
     use automata::alphabet::CharAlphabet;
-    use automata::{Pointed, States, TransitionSystem};
+    use automata::{Pointed, States};
     use automata::representation::CollectPointed;
     use automata::upw;
     use tracing::info;
 
-    use super::{OmegaSample, sample};
+    use super::OmegaSample;
 
     #[test]
     fn infer_precise_dpa_with_al_inf_aa() {

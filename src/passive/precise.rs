@@ -15,8 +15,6 @@ use tracing::debug;
 
 type Dfa<A> = DFA<DTS<A, bool, Void>>;
 
-const MAX_PRIORITIES: usize = 8;
-
 pub fn build_precise_dpa_for<A: Alphabet>(fwpm: FWPM<A>) -> DPA<DTS<A, Void, Int>> {
     match fwpm.complexity() {
         0 => panic!("Precise DPA construction only makes sense if at least one color exists"),
@@ -268,8 +266,8 @@ impl<A: Alphabet, const N: usize> PreciseDPA<A, N> {
             progress
                 .iter()
                 .enumerate()
-                .map(|(i, (c, p, b))| if i < least_accepting { *c } else { d }),
-            progress.iter().enumerate().map(|(i, (c, p, b))| {
+                .map(|(i, (c, _p, _b))| if i < least_accepting { *c } else { d }),
+            progress.iter().enumerate().map(|(i, (_c, p, _b))| {
                 if i < least_accepting {
                     *p
                 } else {
@@ -288,7 +286,7 @@ impl<A: Alphabet, const N: usize> PreciseDPA<A, N> {
 }
 
 impl<A: Alphabet, const N: usize> Debug for PreciseDPA<A, N> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         todo!()
     }
 }
@@ -318,7 +316,7 @@ impl<A: Alphabet, const N: usize> From<FWPM<A>> for PreciseDPA<A, N> {
             }
             let array_dfas = dfas
                 .try_into()
-                .unwrap_or_else(|v| panic!("LENGTH DOES NOT MATCH {N}"));
+                .unwrap_or_else(|_v| panic!("LENGTH DOES NOT MATCH {N}"));
             prc_dfas.insert(idx.into_usize(), array_dfas);
         }
 
@@ -341,7 +339,7 @@ mod tests {
 
     #[test]
     fn precise_dpa() {
-        let alph = CharAlphabet::of_size(3);
+        let _alph = CharAlphabet::of_size(3);
 
         let cong = DTS::builder()
             .with_transitions([

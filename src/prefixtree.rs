@@ -80,7 +80,7 @@ pub fn prefix_tree<A: Alphabet, W: Into<ReducedOmegaWord<A::Symbol>>, I: IntoIte
 
 #[cfg(test)]
 mod tests {
-    use super::prefix_tree;
+    
 
     #[test]
     #[ignore]
