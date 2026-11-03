@@ -44,13 +44,13 @@ fn right_congruence_by_omega_words<M: Congruence<EdgeColor = Int>>(
 ) -> OmegaSample<M::Alphabet, bool> {
     let start = std::time::Instant::now();
 
-    let mut pos = math::Set::default();
-    let mut neg = math::Set::default();
+    let mut pos = math::FxIndexSet::default();
+    let mut neg = math::FxIndexSet::default();
 
     let class_count = cong.partition().size();
     for mtr in cong.minimal_transition_representatives() {
         let reached = cong
-            .reached_state_index(&mtr)
+            .reached_state(&mtr)
             .expect("State must be present");
         trace!(
             "Considering transition representative {} with id {}",
@@ -109,7 +109,7 @@ where
 {
     for mtr in cong.minimal_transition_representatives() {
         let reached = cong
-            .reached_state_index(&mtr)
+            .reached_state(&mtr)
             .expect("State must be present");
         for (mr, idx) in cong.minimal_representatives() {
             if reached == idx {
@@ -126,7 +126,7 @@ fn priority_mapping_by_omega_words<A: Alphabet>(
     let start = std::time::Instant::now();
 
     let idempotents = cpm.mm().minimal_representatives().filter_map(|(rep, q)| {
-        let Some(reached) = cpm.mm().reached_state_index_from(&rep, q) else {
+        let Some(reached) = cpm.mm().reached_state_from(&rep, q) else {
             panic!("Input must be deterministic");
         };
         if q == reached {

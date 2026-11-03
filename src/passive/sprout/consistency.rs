@@ -1,30 +1,25 @@
-use itertools::{Either, Itertools, all};
-use std::collections::HashMap;
-use std::iter;
+use itertools::{Either, Itertools};
+use std::collections::{BTreeSet, HashMap};
 use std::ops::Not;
 
 use crate::prefixtree::prefix_tree;
 use automata::Void;
 use automata::alphabet::{Alphabet, CharAlphabet};
 use automata::automaton::{BuchiCondition, DBA, DPA, MinEvenParityCondition};
-use automata::math::OrderedSet;
-use automata::representation::CollectTs;
-use automata::ts::run::InfiniteRunOutput::Successful;
-use automata::ts::{Deterministic, EdgeColor, Sproutable, run};
-use automata::{
-    Pointed, TransitionSystem,
-    ts::path::{self, LassoIn},
-};
+use automata::representation::CollectPointed;
+use automata::ts::run::{RunOutput, Triggers};
+use automata::ts::{Deterministic, Sproutable, StateId};
+use automata::{DTS, Pointed, States, TransitionSystem};
 
 use super::OmegaSample;
 
-type EdgeSet = OrderedSet<(u32, char)>;
+type EdgeSet = BTreeSet<(StateId, char)>;
 
 /// Used to define consistency checks on various types of omega acceptance conditions
 /// required by the sprout algorithm for passively learning omega automata
 pub trait ConsistencyCheck<T> {
     /// the type of the automaton to be returned
-    type Aut: TransitionSystem;
+    type Aut: States;
     /// Checks if the given transition system is consistent with the sample
     fn consistent(
         &self,
@@ -50,10 +45,10 @@ pub trait ConsistencyCheck<T> {
 
 impl<T> ConsistencyCheck<T> for BuchiCondition
 where
-    T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
+    T: Deterministic<Alphabet = CharAlphabet, StateIndex = StateId> + Pointed + States,
     <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
 {
-    type Aut = DBA;
+    type Aut = DBA<DTS<CharAlphabet, Void, bool>>;
     fn consistent(
         &self,
         ts: &T,
@@ -95,7 +90,7 @@ where
         let neg_union: EdgeSet = neg_sets_new.iter().flatten().cloned().collect();
 
         let all_transitions: EdgeSet = ts
-            .state_indices()
+            .states()
             .cartesian_product(ts.alphabet().universe())
             .collect();
 
@@ -115,8 +110,6 @@ where
     fn default_automaton(&self, sample: &OmegaSample) -> Self::Aut {
         let mut dba = prefix_tree(sample.alphabet().clone(), sample.positive_words())
             .map_edge_colors(|_| true)
-            .erase_state_colors()
-            .with_initial(0)
             .collect_dba();
         dba.complete_with_colors(Void, false);
         dba
@@ -125,10 +118,10 @@ where
 
 impl<T> ConsistencyCheck<T> for MinEvenParityCondition
 where
-    T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
+    T: Deterministic<Alphabet = CharAlphabet, StateIndex = StateId> + Pointed + States,
     <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
 {
-    type Aut = DPA;
+    type Aut = DPA<DTS<CharAlphabet, Void, automata::Int>>;
 
     fn consistent(
         &self,
@@ -142,7 +135,7 @@ where
             neg_sets_new.extend(neg_sets);
             // check how set with all transitions should be handled
             let all_transitions: EdgeSet = ts
-                .state_indices()
+                .states()
                 .cartesian_product(ts.alphabet().universe())
                 .collect();
             let is_consistent = match (
@@ -195,7 +188,7 @@ where
         neg_sets_new.extend(neg_sets);
 
         let all_transitions: EdgeSet = ts
-            .state_indices()
+            .states()
             .cartesian_product(ts.alphabet().universe())
             .collect();
         let z_path: Vec<EdgeSet>;
@@ -246,7 +239,7 @@ where
         }
         // build dpa from Zielonka path
 
-        let mut prio_map: HashMap<(u32, char), u8> = HashMap::new();
+        let mut prio_map: HashMap<(StateId, char), u8> = HashMap::new();
         let mut prio = if lowest { 0 } else { 1 };
         for i in 0..z_path.len() - 1 {
             for t in z_path[i].difference(&z_path[i + 1]) {
@@ -272,8 +265,6 @@ where
     fn default_automaton(&self, sample: &OmegaSample) -> Self::Aut {
         let mut dpa = prefix_tree(sample.alphabet().clone(), sample.positive_words())
             .map_edge_colors(|_| 0)
-            .erase_state_colors()
-            .with_initial(0)
             .collect_dpa();
         dpa.complete_with_colors(Void, 1);
         dpa
@@ -357,35 +348,38 @@ fn zielonka_path(
     Some(z_path)
 }
 
-use run::InfiniteRunOutput::*;
 /// Run positive and negative sample words on the given transition system.
 /// If there is a pair of words escaping with the same escape string from the same state, return None.
 /// Otherwise return non-escaping runs of positive and negative example words
-fn to_infinity_sets<T>(ts: T, sample: &OmegaSample) -> Option<[Vec<EdgeSet>; 2]>
+fn to_infinity_sets<T>(ts: &T, sample: &OmegaSample) -> Option<[Vec<EdgeSet>; 2]>
 where
-    T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
-    <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
+    T: Deterministic<Alphabet = CharAlphabet, StateIndex = StateId> + Pointed,
 {
     let time_start = std::time::Instant::now();
+    // the state from which the run escapes is the one reached by the escape prefix
+    let escape_state = |prefix: &_| {
+        ts.reached_state(prefix)
+            .expect("the prefix before the escape symbol has a run")
+    };
     // run transition system on sample words and
     // separate in escaping and non-escaping (successful) runs
     let (pos_successful, pos_escaping): (Vec<_>, Vec<_>) = sample
         .positive_words()
-        .map(|w| (ts.omega_run::<_, run::Triggers<_>>(w), w))
-        .partition_map(|(r, w)| match r {
-            (Successful(v)) => Either::Left(v),
-            (Failed(q, ep)) => Either::Right((q, ep.suffix())),
+        .map(|w| ts.run(w).evaluate::<Triggers<T>>())
+        .partition_map(|r| match r {
+            RunOutput::Reached(v) => Either::Left(v),
+            RunOutput::Escaped(ep) => Either::Right((escape_state(&ep), ep.suffix())),
         });
 
     let mut neg_successful = Vec::default();
-    for (output, w) in sample
+    for output in sample
         .negative_words()
-        .map(|w| (ts.omega_run::<_, run::Triggers<_>>(w), w))
+        .map(|w| ts.run(w).evaluate::<Triggers<T>>())
     {
         match output {
-            Successful(v) => neg_successful.push(v),
-            Failed(q, ep) => {
-                if pos_escaping.contains(&(q, ep.suffix())) {
+            RunOutput::Reached(v) => neg_successful.push(v),
+            RunOutput::Escaped(ep) => {
+                if pos_escaping.contains(&(escape_state(&ep), ep.suffix())) {
                     return None;
                 }
             }
@@ -401,7 +395,7 @@ where
 // /// during the runs of positive and negative example words.
 // fn to_infinity_sets<T>(ts: T, sample: &OmegaSample) -> Option<[Vec<EdgeSet>; 2]>
 // where
-//     T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
+//     T: Deterministic<Alphabet = CharAlphabet, StateIndex = StateId> + Pointed + States,
 //     <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
 // {
 //     if let Some([pos_successful, neg_successful]) = successful_runs(ts, sample) {
@@ -444,6 +438,7 @@ mod tests {
         DTS,
         automaton::{DeterministicOmegaAutomaton, OmegaAcceptanceCondition},
     };
+    use automata::ts::q;
     use automata::{Void, upw};
 
     // default alphabet
@@ -565,8 +560,8 @@ mod tests {
             .into_dba(0);
 
         let res = BuchiCondition.consistent_automaton(&ts, &sample, vec![], vec![]);
-        let pos_sets: Vec<EdgeSet> = vec![vec![(1, 'b')].into_iter().collect()];
-        let neg_sets: Vec<EdgeSet> = vec![vec![(0, 'b')].into_iter().collect()];
+        let pos_sets: Vec<EdgeSet> = vec![vec![(q(1), 'b')].into_iter().collect()];
+        let neg_sets: Vec<EdgeSet> = vec![vec![(q(0), 'b')].into_iter().collect()];
         let res2 = BuchiCondition.consistent_automaton(&ts, &sample2, pos_sets, neg_sets);
 
         assert_eq!(res, dba);
@@ -738,8 +733,8 @@ mod tests {
         assert_eq!(res2, dpa2);
         // with acceptance condition from infinity sets
         let pos_sets: Vec<EdgeSet> = vec![
-            vec![(0, 'a')].into_iter().collect(),
-            vec![(0, 'a'), (0, 'b'), (1, 'a')].into_iter().collect(),
+            vec![(q(0), 'a')].into_iter().collect(),
+            vec![(q(0), 'a'), (q(0), 'b'), (q(1), 'a')].into_iter().collect(),
         ];
         let neg_sets: Vec<EdgeSet> = vec![];
         let res3 = MinEvenParityCondition.consistent_automaton(&ts2, &sample2, pos_sets, neg_sets);

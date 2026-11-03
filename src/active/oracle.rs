@@ -2,13 +2,12 @@ use std::cell::RefCell;
 
 use crate::passive::SetSample;
 use automata::alphabet::{Alphabet, Symbol};
-use automata::automaton::{DFA, IntoMooreMachine, MealyLike, MealyMachine};
-use automata::representation::CollectTs;
+use automata::automaton::{DFA, MealyLike, MealyMachine, MooreMachine};
+use automata::representation::CollectPointed;
+use automata::ts::Deterministic;
 use automata::ts::operations::Product;
-use automata::ts::{Deterministic, EdgeColor, StateColor};
 use automata::word::{FiniteWord, Word};
-use automata::{Color, Int, Lattice, Void, math::Set};
-use automata::{Congruence, TransitionSystem, ts::operations::MapStateColor};
+use automata::{Color, DTS, Int, Lattice, Pointed, States, TransitionSystem, Void, math::FxIndexSet};
 use tracing::trace;
 
 use super::Hypothesis;
@@ -25,7 +24,7 @@ pub type Counterexample<A, O> = (Vec<<A as Alphabet>::Symbol>, O);
 /// `bool` as the `Output` type.
 pub trait Oracle {
     type Alphabet: Alphabet;
-    type Output: Color;
+    type Output: Color + Eq + std::hash::Hash;
     fn alphabet(&self) -> &Self::Alphabet;
 
     fn output<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
@@ -113,14 +112,14 @@ impl<A: Alphabet, W: FiniteWord<Symbol = A::Symbol>> From<(SetSample<A, W>, bool
 /// the negated input automaton and returning a counterexample if the intersection is non-empty.
 #[derive(Debug, Clone)]
 pub struct DFAOracle<A: Alphabet> {
-    automaton: DFA<A>,
-    negated: DFA<A>,
+    automaton: DFA<DTS<A, bool, Void>>,
+    negated: DFA<DTS<A, bool, Void>>,
 }
 
 impl<A: Alphabet> DFAOracle<A> {
     /// Creates a new instance of a [`DFAOracle`] from the given automaton.
-    pub fn new(automaton: DFA<A>) -> Self {
-        let negated = automaton.negation().collect_dfa();
+    pub fn new(automaton: DFA<DTS<A, bool, Void>>) -> Self {
+        let negated = automaton.negation().reachable_part().collect_dfa();
         Self { negated, automaton }
     }
 }
@@ -159,18 +158,18 @@ impl<A: Alphabet> Oracle for DFAOracle<A> {
 
 #[derive(Clone)]
 pub struct MealyOracle<A: Alphabet, C: Color + Lattice = Int> {
-    mm: MealyMachine<A, Void, C>,
+    mm: MealyMachine<DTS<A, Void, C>>,
 }
 
 impl<A: Alphabet, C: Color + Lattice> MealyOracle<A, C> {
-    pub fn new(mm: impl MealyLike<Alphabet = A, EdgeColor = C>) -> Self {
+    pub fn new(mm: impl MealyLike<Alphabet = A, EdgeColor = C> + States) -> Self {
         Self {
             mm: mm.erase_state_colors().collect_mealy(),
         }
     }
 }
 
-impl<A: Alphabet, C: Color + Lattice> Oracle for MealyOracle<A, C> {
+impl<A: Alphabet, C: Color + Lattice + Eq + std::hash::Hash> Oracle for MealyOracle<A, C> {
     type Alphabet = A;
 
     type Output = C;
@@ -216,18 +215,21 @@ impl<A: Alphabet, C: Color + Lattice> Oracle for MealyOracle<A, C> {
 /// is returned if the word does not produce a color in the automaton.
 #[derive(Clone)]
 pub struct CompletingMealyOracle<A: Alphabet, C: Color = Int> {
-    automaton: MealyMachine<A, Void, C>,
+    automaton: MealyMachine<DTS<A, Void, C>>,
     default: C,
-    missed: RefCell<Set<Vec<A::Symbol>>>,
+    missed: RefCell<FxIndexSet<Vec<A::Symbol>>>,
 }
 
 impl<A: Alphabet, C: Color> CompletingMealyOracle<A, C> {
     /// Creates a new [`MealyOracle`] based on an instance of [`MealyMachine`].
-    pub fn new(automaton: impl Congruence<Alphabet = A, EdgeColor = C>, default: C) -> Self {
+    pub fn new(
+        automaton: impl Deterministic<Alphabet = A, EdgeColor = C> + Pointed + States,
+        default: C,
+    ) -> Self {
         Self {
             automaton: automaton.erase_state_colors().collect_mealy(),
             default,
-            missed: RefCell::new(Set::default()),
+            missed: RefCell::new(FxIndexSet::default()),
         }
     }
     pub fn alphabet(&self) -> &A {
@@ -235,13 +237,14 @@ impl<A: Alphabet, C: Color> CompletingMealyOracle<A, C> {
     }
 }
 
-impl<A: Alphabet, C: Color + Ord> Oracle for CompletingMealyOracle<A, C> {
+impl<A: Alphabet, C: Color + Eq + std::hash::Hash + Ord> Oracle for CompletingMealyOracle<A, C> {
     type Alphabet = A;
     type Output = C;
 
     fn output<W: FiniteWord<Symbol = A::Symbol>>(&self, word: W) -> C {
         self.automaton
-            .last_edge_color(word)
+            .run(word)
+            .last_edge_color()
             .unwrap_or(self.default.clone())
     }
 
@@ -286,12 +289,12 @@ pub struct MooreOracle<D> {
     automaton: D,
 }
 
-impl<D: Deterministic> Oracle for MooreOracle<IntoMooreMachine<D>>
+impl<D: Deterministic + States> Oracle for MooreOracle<MooreMachine<D>>
 where
-    StateColor<D>: Color + Default + Ord,
+    D::StateColor: Color + Default + Ord + Eq + std::hash::Hash,
 {
     type Alphabet = D::Alphabet;
-    type Output = StateColor<D>;
+    type Output = D::StateColor;
 
     fn alphabet(&self) -> &Self::Alphabet {
         self.automaton.alphabet()
@@ -302,7 +305,7 @@ where
         word: W,
     ) -> Self::Output {
         self.automaton
-            .reached_state_color(word)
+            .map(word)
             .expect("underlying transition system of Moore oracle must be complete")
     }
 
@@ -319,7 +322,7 @@ where
         {
             match (
                 self.automaton
-                    .transform(&mr)
+                    .map(&mr)
                     .expect("source automaton must be complete"),
                 hypothesis.output(&mr),
             ) {
@@ -331,13 +334,9 @@ where
     }
 }
 
-impl<D> MooreOracle<D>
-where
-    D: Congruence,
-    EdgeColor<D>: Color,
-{
-    /// Creates a new [`MooreOracle`] based on an instance of something that behaves like a `MooreMachine`.
-    pub fn new(automaton: D) -> Self {
+impl<D: Deterministic> MooreOracle<MooreMachine<D>> {
+    /// Creates a new [`MooreOracle`] based on a `MooreMachine`.
+    pub fn new(automaton: MooreMachine<D>) -> Self {
         Self { automaton }
     }
 }
@@ -345,7 +344,7 @@ where
 #[cfg(test)]
 mod tests {
     use automata::automaton::MealyMachine;
-    use automata::{DTS, TransitionSystem};
+    use automata::{DTS, States, TransitionSystem};
 
     use crate::active::LStar;
 
@@ -370,6 +369,6 @@ mod tests {
         let alphabet = oracle.alphabet().clone();
         let mut learner = LStar::new(alphabet, oracle);
         let mm: MealyMachine = learner.infer();
-        assert_eq!(mm.size(), 2);
+        assert_eq!(mm.state_count(), 2);
     }
 }

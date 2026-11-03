@@ -2,27 +2,24 @@
 mod consistency;
 pub use consistency::*;
 
-use automata::{DTS, Pointed, TransitionSystem, automaton::WithoutCondition, random, ts::path};
+use automata::{DTS, Pointed, States, TransitionSystem};
 use itertools::Itertools;
-use tracing::{error, info, trace, warn};
+use tracing::{error, info, trace};
 
-use crate::prefixtree::prefix_tree;
 use automata::Void;
 use automata::alphabet::CharAlphabet;
-use automata::automaton::{Automaton, WithInitial};
-use automata::ts::{Deterministic, Shrinkable, Sproutable, run};
+use automata::automaton::WithInitial;
+use automata::ts::{Deterministic, Shrinkable, Sproutable, StateId};
 use automata::word::OmegaWord;
-use std::{collections::HashSet, fmt::Debug, path::Iter};
+use std::fmt::Debug;
 
 use super::OmegaSample;
 
 #[derive(thiserror::Error)]
 pub enum SproutError<A: ConsistencyCheck<WithInitial<DTS>>> {
-    #[error("timeout was exceeded, bailing with ts of size {}", aut.size())]
-    Timeout {
-        aut: Automaton<CharAlphabet, WithoutCondition, Void, Void>,
-    },
-    #[error("escape prefix threshold `{0}` exceeded, bailing with ts of size {}", aut.size())]
+    #[error("timeout was exceeded, bailing with ts of size {}", aut.state_count())]
+    Timeout { aut: WithInitial<DTS> },
+    #[error("escape prefix threshold `{thres}` exceeded, bailing with ts of size {}", aut.state_count())]
     Threshold { thres: usize, aut: A::Aut },
 }
 
@@ -36,7 +33,7 @@ impl<A: ConsistencyCheck<WithInitial<DTS>>> Debug for SproutError<A> {
                 Timeout { aut } => "reached timeout".to_string(),
                 Threshold { thres, aut } => format!(
                     "exceeded threshold {thres} with automaton of size {}",
-                    aut.size()
+                    aut.state_count()
                 ),
             }
         )
@@ -55,7 +52,8 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
     let time_start = std::time::Instant::now();
 
     // make ts with initial state
-    let mut ts = Automaton::new_with_initial_color(sample.alphabet().clone(), Void);
+    let mut ts: WithInitial<DTS> =
+        WithInitial::new_with_initial_color(sample.alphabet().clone(), Void);
 
     // compute threshold
     let (lb, le) = sample
@@ -74,7 +72,11 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
         trace!(
             "attempting to find an escape prefix with sets\npos {pos_sets:?}, neg {neg_sets:?}\n{mut_sample:?}\n{ts:?}"
         );
-        let Some(escape_prefix) = ts.omega_escape_prefixes(mut_sample.positive_words()).min()
+        let Some(escape_prefix) = mut_sample
+            .positive_words()
+            .filter_map(|w| ts.run(w).escape_prefix())
+            .unique()
+            .min()
         else {
             break;
         };
@@ -84,7 +86,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
         if time_start.elapsed() >= std::time::Duration::from_secs(60 * 30) {
             error!(
                 "task exceeded timeout, aborting with automaton of size {}",
-                ts.size()
+                ts.state_count()
             );
             return Err(SproutError::Timeout { aut: ts });
         }
@@ -92,7 +94,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
         if (escape_prefix.len() as isize) - 2 > thresh {
             error!(
                 "task exceeded threshold with an automaton of size {}",
-                ts.size()
+                ts.state_count()
             );
             // compute default automaton
             return Err(SproutError::Threshold {
@@ -101,12 +103,12 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
             });
         }
 
-        let source = ts.reached_state_index(&escape_prefix).unwrap();
+        let source = ts.reached_state(&escape_prefix).unwrap();
         let sym = escape_prefix.escape_symbol();
 
-        for q in ts.state_indices_vec() {
+        for q in ts.states().collect_vec() {
             // try adding transition
-            ts.add_edge((source, sym, q));
+            ts.add_edge((source, sym, Void, q));
             // continue if consistent
             let (is_consistent, pos_sets_new, neg_sets_new) =
                 acc_type.consistent(&ts, &mut_sample, pos_sets.clone(), neg_sets.clone());
@@ -122,7 +124,7 @@ pub fn sprout<A: ConsistencyCheck<WithInitial<DTS>>>(
         }
         // if none consistent add new state
         let new_state = ts.add_state(Void);
-        ts.add_edge((source, sym, new_state));
+        ts.add_edge((source, sym, Void, new_state));
     }
 
     info!(
@@ -136,15 +138,12 @@ impl OmegaSample {
     /// Remove all words from the sample that are not escaping in the given transition system
     pub fn remove_non_escaping<T>(&mut self, ts: &T)
     where
-        T: TransitionSystem<Alphabet = CharAlphabet, StateIndex = u32> + Deterministic + Pointed,
-        // <T as TransitionSystem>::EdgeColor: Eq + std::hash::Hash,
+        T: Deterministic<Alphabet = CharAlphabet, StateIndex = StateId> + Pointed,
     {
         // run transition system on sample words and
         // separate in escaping and non-escaping (successful) runs
-        self.positive
-            .retain(|w| ts.omega_run::<_, run::NoObserver>(w).is_escaping());
-        self.negative
-            .retain(|w| ts.omega_run::<_, run::NoObserver>(w).is_escaping());
+        self.positive.retain(|w| !ts.run(w).is_successful());
+        self.negative.retain(|w| !ts.run(w).is_successful());
     }
 }
 

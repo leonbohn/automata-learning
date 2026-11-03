@@ -3,7 +3,9 @@ use std::{
     fmt::Display,
 };
 
-use automata::{Class, Pointed, RightCongruence, TransitionSystem, ts::operations::ProductIndex};
+use automata::{
+    Class, DTS, Pointed, RightCongruence, States, TransitionSystem, ts::operations::ProductIndex,
+};
 use itertools::Itertools;
 use tracing::{error, trace, warn};
 
@@ -13,12 +15,15 @@ use crate::{
 };
 
 use automata::alphabet::Alphabet;
-use automata::representation::{CollectTs, IntoTs};
+use automata::automaton::DFA;
+use automata::representation::{CollectPointed, IntoTransitions};
 use automata::ts::operations::Product;
-use automata::ts::predecessors::PredecessorIterable;
-use automata::ts::{Deterministic, IsEdge, ScalarIndexType, Shrinkable, Sproutable, StateIndex};
+use automata::ts::{
+    CompactIdMap, Deterministic, DenseId, PredecessorIterable, Sccs, Shrinkable, Sproutable,
+    StateId,
+};
 use automata::word::FiniteWord;
-use automata::{Show, Void, math};
+use automata::{Void, math};
 use owo_colors::OwoColorize;
 
 /// Represents a consistency check that can be performed on a congruence. This is used in the
@@ -27,7 +32,7 @@ use owo_colors::OwoColorize;
 /// relation, by a list or they could be verified against a sample (or other form of data).
 pub trait ConsistencyCheck<A: Alphabet> {
     /// Verifies that `cong` is consistent with the constraint.
-    fn consistent(&self, cong: &RightCongruence<A>) -> bool;
+    fn consistent(&self, cong: &RightCongruence<DTS<A>>) -> bool;
     /// Returns an approximate threshold for the number of classes in the congruence. This is
     /// useful for algorithms to detect infinite loops.
     fn threshold(&self) -> usize;
@@ -39,7 +44,7 @@ impl<A: Alphabet, CC: ConsistencyCheck<A>> ConsistencyCheck<A> for &CC {
     fn alphabet(&self) -> &A {
         CC::alphabet(self)
     }
-    fn consistent(&self, cong: &RightCongruence<A>) -> bool {
+    fn consistent(&self, cong: &RightCongruence<DTS<A>>) -> bool {
         CC::consistent(self, cong)
     }
     fn threshold(&self) -> usize {
@@ -48,14 +53,14 @@ impl<A: Alphabet, CC: ConsistencyCheck<A>> ConsistencyCheck<A> for &CC {
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A> {
-    fn consistent(&self, cong: &RightCongruence<A>) -> bool {
-        let positive_indices: math::OrderedSet<_> = self
+    fn consistent(&self, cong: &RightCongruence<DTS<A>>) -> bool {
+        let positive_indices: std::collections::BTreeSet<_> = self
             .positive_words()
-            .filter_map(|w| cong.reached_state_index(w))
+            .filter_map(|w| cong.reached_state(w))
             .collect();
-        let negative_indices: math::OrderedSet<_> = self
+        let negative_indices: std::collections::BTreeSet<_> = self
             .negative_words()
-            .filter_map(|w| cong.reached_state_index(w))
+            .filter_map(|w| cong.reached_state(w))
             .collect();
         positive_indices.is_disjoint(&negative_indices)
     }
@@ -69,11 +74,11 @@ impl<A: Alphabet> ConsistencyCheck<A> for FiniteSample<A> {
     }
 }
 
-/// Stores two DFAs and a math::Set of conflicts between them.
+/// Stores two DFAs and a math::FxIndexSet of conflicts between them.
 #[derive(Clone)]
 pub struct ConflictRelation<A: Alphabet> {
-    dfas: [RightCongruence<A>; 2],
-    conflicts: math::OrderedSet<(StateIndex, StateIndex)>,
+    dfas: [RightCongruence<DTS<A>>; 2],
+    conflicts: std::collections::BTreeSet<(StateId, StateId)>,
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
@@ -81,7 +86,7 @@ impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
         self.dfas[0].alphabet()
     }
     /// Verifies that a given congruence is consistent with the conflicts.
-    fn consistent(&self, cong: &RightCongruence<A>) -> bool {
+    fn consistent(&self, cong: &RightCongruence<DTS<A>>) -> bool {
         let left = cong.ts_product(&self.dfas[0]);
         let right = cong.ts_product(&self.dfas[1]);
         let right_reachable = right.reachable_state_indices().collect_vec();
@@ -92,9 +97,9 @@ impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
                 .filter(|ProductIndex(rcong, _)| rcong == &lcong)
             {
                 if lcong == *rcong && self.conflicts.contains(&(ldfa, *rdfa)) {
-                    let lname = ldfa.show();
-                    let rname = rdfa.show();
-                    let congname = lcong.show();
+                    let lname = ldfa;
+                    let rname = rdfa;
+                    let congname = lcong;
                     trace!(
                         "\t\tConflict found, ({congname}, {lname}) and ({congname}, {rname}) reachable with ({lname}, {rname}) in conflicts"
                     );
@@ -107,7 +112,7 @@ impl<A: Alphabet> ConsistencyCheck<A> for ConflictRelation<A> {
 
     /// Returns a preliminary threshold for the number of states in the product of the two DFAs.
     fn threshold(&self) -> usize {
-        2 * self.dfas[0].size() * self.dfas[1].size()
+        2 * self.dfas[0].state_count() * self.dfas[1].state_count()
     }
 }
 
@@ -125,13 +130,23 @@ impl<A: Alphabet> ConflictRelation<A> {
     }
 }
 
+/// Drops the colors of the DFA and returns the remaining congruence together with the map from
+/// the old to the new state ids.
+fn to_congruence<A: Alphabet>(
+    dfa: &DFA<DTS<A, bool, Void>>,
+) -> (RightCongruence<DTS<A>>, CompactIdMap<StateId>) {
+    dfa.erase_colors()
+        .with_initial(dfa.initial())
+        .collect_with_map()
+}
+
 /// Computes a conflict relation encoding iteration consistency. For more details on the construction,
 /// see Lemma 29 in [this paper](https://arxiv.org/pdf/2302.11043.pdf).
 pub fn iteration_consistency_conflicts<A: Alphabet>(
     samples: &SplitOmegaSample<'_, A>,
     class: Class<A::Symbol>,
 ) -> ConflictRelation<A> {
-    let idx = samples.cong().reached_state_index(&class).unwrap();
+    let idx = samples.cong().reached_state(&class).unwrap();
     let Some(sample) = samples.get(idx) else {
         panic!("Sample for class {:?} does not exist!", class)
     };
@@ -151,23 +166,25 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
 
     let looping_words = samples.cong().looping_words(idx);
 
-    let left_pta = prefix_tree(sample.alphabet.clone(), periodic_sample.positive())
-        .map_state_colors(|mr| {
+    let left_pta = DFA::from(
+        prefix_tree(sample.alphabet.clone(), periodic_sample.positive()).map_state_colors(|mr| {
             !mr.is_empty() && periodic_sample.classify(mr.omega_power()) == Some(true)
-        })
-        .into_dfa()
-        .intersection(&looping_words)
-        .collect_dfa();
+        }),
+    )
+    .intersection(&looping_words)
+    .reachable_part()
+    .collect_dfa();
 
-    let right_pta = prefix_tree(sample.alphabet.clone(), periodic_sample.negative())
-        .map_state_colors(|mr| {
+    let right_pta = DFA::from(
+        prefix_tree(sample.alphabet.clone(), periodic_sample.negative()).map_state_colors(|mr| {
             !mr.is_empty() && periodic_sample.classify(mr.omega_power()) == Some(false)
-        })
-        .into_dfa()
-        .intersection(&looping_words)
-        .collect_dfa();
+        }),
+    )
+    .intersection(&looping_words)
+    .reachable_part()
+    .collect_dfa();
 
-    let mut conflicts = math::OrderedSet::default();
+    let mut conflicts = std::collections::BTreeSet::default();
     let mut queue = VecDeque::from_iter(
         left_pta
             .accepting_states()
@@ -198,24 +215,17 @@ pub fn iteration_consistency_conflicts<A: Alphabet>(
         }
     }
 
-    let (left, left_initial) = left_pta.into_dts_preserving_and_initial();
-    let (right, right_initial) = right_pta.into_dts_preserving_and_initial();
+    let (left, left_map) = to_congruence(&left_pta);
+    let (right, right_map) = to_congruence(&right_pta);
 
+    let renumber = |map: &CompactIdMap<StateId>, q| StateId::from_usize(map.id(&q).unwrap());
     let conflicts: BTreeSet<_> = conflicts
         .into_iter()
-        .map(|(l, r)| (left.old_to_new(l).unwrap(), right.old_to_new(r).unwrap()))
+        .map(|(l, r)| (renumber(&left_map, l), renumber(&right_map, r)))
         .collect();
 
     ConflictRelation {
-        dfas: [
-            left.erase_colors()
-                .with_initial(left_initial)
-                .into_right_congruence(),
-            right
-                .erase_colors()
-                .with_initial(right_initial)
-                .into_right_congruence(),
-        ],
+        dfas: [left, right],
         conflicts,
     }
 }
@@ -226,26 +236,20 @@ pub fn prefix_consistency_conflicts<A: Alphabet>(sample: &OmegaSample<A>) -> Con
     let left_pta = prefix_tree(sample.alphabet.clone(), sample.positive_words());
     let right_pta = prefix_tree(sample.alphabet.clone(), sample.negative_words());
 
-    let dfa = (&left_pta).ts_product(&right_pta);
+    let dfa = (&left_pta).ts_product(&right_pta).reachable_part();
 
     trace!("built prefix tree product");
-    let sccs = dfa.sccs();
+    let sccs = Sccs::on(&dfa).compute();
     trace!("computed scc decomposition");
 
-    let states_with_infinite_run: Vec<_> = sccs
-        .iter()
-        .filter_map(|(_, scc)| {
-            if !scc.is_transient() {
-                Some(scc.clone().into_iter().map(Into::into))
-            } else {
-                None
-            }
-        })
-        .flatten()
+    let states_with_infinite_run: Vec<(StateId, StateId)> = sccs
+        .sccs_iter()
+        .filter(|scc| !scc.is_transient())
+        .flat_map(|scc| scc.clone().into_iter().map(Into::into))
         .collect();
 
-    let mut conflicts = math::OrderedSet::default();
-    for ProductIndex(l, r) in dfa.state_indices() {
+    let mut conflicts = std::collections::BTreeSet::default();
+    for ProductIndex(l, r) in dfa.states() {
         let reachable = dfa
             .reachable_state_indices_from(ProductIndex(l, r))
             .collect_vec();
@@ -259,15 +263,15 @@ pub fn prefix_consistency_conflicts<A: Alphabet>(sample: &OmegaSample<A>) -> Con
 
     ConflictRelation {
         dfas: [
-            left_pta.erase_state_colors().into_right_congruence(),
-            right_pta.erase_state_colors().into_right_congruence(),
+            (&left_pta).erase_state_colors().collect_right_congruence(),
+            (&right_pta).erase_state_colors().collect_right_congruence(),
         ],
         conflicts,
     }
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for () {
-    fn consistent(&self, cong: &RightCongruence<A>) -> bool {
+    fn consistent(&self, cong: &RightCongruence<DTS<A>>) -> bool {
         true
     }
 
@@ -294,7 +298,7 @@ impl<'a, A: Alphabet> SeparatesIdempotents<'a, A> {
 }
 
 impl<A: Alphabet> ConsistencyCheck<A> for SeparatesIdempotents<'_, A> {
-    fn consistent(&self, cong: &RightCongruence<A>) -> bool {
+    fn consistent(&self, cong: &RightCongruence<DTS<A>>) -> bool {
         true
     }
 
@@ -310,9 +314,9 @@ impl<A: Alphabet> ConsistencyCheck<A> for SeparatesIdempotents<'_, A> {
 #[derive(Debug)]
 pub enum DpaInfError<A: Alphabet> {
     /// The threshold has been exceeded, returns constructed right congruence and threshold value
-    Threshold(RightCongruence<A>, usize),
+    Threshold(RightCongruence<DTS<A>>, usize),
     /// The given timeout has been exceeded, returns right congruence that has been constructed thus far
-    Timeout(RightCongruence<A>),
+    Timeout(RightCongruence<DTS<A>>),
 }
 
 /// Runs the omega-sprout algorithm on a given conflict relation.
@@ -322,16 +326,17 @@ pub fn dpainf<A, C>(
     additional_constraints: Vec<Box<dyn ConsistencyCheck<A>>>,
     allow_transitions_into_epsilon: bool,
     timeout_seconds: Option<u64>,
-) -> Result<RightCongruence<A>, DpaInfError<A>>
+) -> Result<RightCongruence<DTS<A>>, DpaInfError<A>>
 where
     A: Alphabet,
     C: ConsistencyCheck<A>,
 {
-    let mut cong = RightCongruence::new_with_initial_color(conflicts.alphabet().clone(), Void);
+    let mut cong: RightCongruence<DTS<A>> =
+        RightCongruence::new_with_initial_color(conflicts.alphabet().clone(), Void);
     let initial = cong.initial();
     let threshold = conflicts.threshold();
 
-    // We maintain a math::Set of missing transitions and go through them in order of creation for the states and in order
+    // We maintain a math::FxIndexSet of missing transitions and go through them in order of creation for the states and in order
     // give by alphabet for the symbols for one state (this amouts to BFS).
     let mut queue: VecDeque<_> = conflicts
         .alphabet()
@@ -347,45 +352,42 @@ where
             return Err(DpaInfError::Timeout(cong));
         }
 
-        for target in (0..cong.size()) {
-            let target = ScalarIndexType::from_usize(target);
+        for target in 0..cong.state_count() {
+            let target = StateId::from_usize(target);
             if !allow_transitions_into_epsilon && target == initial {
                 continue;
             }
-            assert!(
-                cong.add_edge((source, cong.make_expression(sym), target))
-                    .is_none()
-            );
+            cong.add_edge((source, cong.alphabet().make_expression(sym), Void, target));
 
             if conflicts.consistent(&cong)
                 && additional_constraints.iter().all(|c| c.consistent(&cong))
             {
                 trace!(
                     "\tTransition {source}--{}-->{target} is consistent",
-                    sym.show(),
+                    sym,
                 );
                 continue 'outer;
             } else {
                 trace!(
                     "\tTransition {source}--{}-->{target} is not consistent",
-                    sym.show(),
+                    sym,
                 );
                 cong.remove_edges_between_matching(source, target, sym);
             }
         }
 
-        if cong.size() > threshold {
+        if cong.state_count() > threshold {
             error!("exceeded threshold on number of states {threshold}");
             return Err(DpaInfError::Threshold(cong, threshold));
         }
 
         trace!(
             "No consistent transition found, adding new state {}",
-            cong.size()
+            cong.state_count()
         );
 
         let new_state = cong.add_state(Void);
-        cong.add_edge((source, cong.make_expression(sym), new_state));
+        cong.add_edge((source, cong.alphabet().make_expression(sym), Void, new_state));
         queue.extend(std::iter::repeat(new_state).zip(conflicts.alphabet().universe()))
     }
 
@@ -397,7 +399,8 @@ pub(crate) mod tests {
     use crate::passive::{SetSample, dpainf::ConflictRelation, sample::OmegaSample};
     use automata::alphabet::CharAlphabet;
     use automata::upw;
-    use automata::{Class, TransitionSystem};
+    use automata::ts::q;
+    use automata::{Class, States, TransitionSystem};
     use itertools::Itertools;
 
     pub fn inf_aba_sample() -> (CharAlphabet, OmegaSample<CharAlphabet>) {
@@ -507,17 +510,17 @@ pub(crate) mod tests {
     fn learn_small_forc() {
         let (alphabet, sample) = testing_smaller_forc_smaple();
         let cong = sample.infer_prefix_congruence().unwrap();
-        assert_eq!(cong.size(), 1);
+        assert_eq!(cong.state_count(), 1);
 
         let split_sample = sample.split(&cong);
         let eps = Class::epsilon();
-        let eps_sample = split_sample.get(0).unwrap();
+        let eps_sample = split_sample.get(q(0)).unwrap();
 
         let conflicts: ConflictRelation<CharAlphabet> =
             super::iteration_consistency_conflicts(&split_sample, eps);
 
         let prc_eps = super::dpainf(conflicts, vec![], false, None).unwrap();
-        assert_eq!(prc_eps.size(), 6);
+        assert_eq!(prc_eps.state_count(), 6);
     }
 
     #[test_log::test]
@@ -527,7 +530,7 @@ pub(crate) mod tests {
         tracing::debug!("Got prefix congruence");
         let split = sample.split(&cong);
         let forc = split.infer_forc();
-        let prc_eps = forc[0].clone();
-        assert_eq!(prc_eps.size(), 13);
+        let prc_eps = forc[q(0)].clone();
+        assert_eq!(prc_eps.state_count(), 13);
     }
 }

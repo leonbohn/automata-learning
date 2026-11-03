@@ -3,9 +3,8 @@ use std::fmt::Debug;
 use super::precise::PreciseDPA;
 use automata::alphabet::Alphabet;
 use automata::automaton::MooreMachine;
-use automata::math;
-use automata::ts::StateIndex;
-use automata::{RightCongruence, TransitionSystem};
+use automata::ts::StateId;
+use automata::{DTS, Int, RightCongruence, States, TransitionSystem, Void};
 use itertools::Itertools;
 
 /// This structure represents a family of weak priority mappings (FWPM). It consists of a leading
@@ -14,16 +13,16 @@ use itertools::Itertools;
 /// `u` of `w`, the value assigned to `u` is greater or equal to the one that is assigned to `w`.
 #[derive(Clone)]
 pub struct FWPM<A: Alphabet> {
-    leading: RightCongruence<A>,
-    pm: math::OrderedMap<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
+    leading: RightCongruence<DTS<A>>,
+    pm: std::collections::BTreeMap<StateId, MooreMachine<DTS<A, Int, Void>>>,
 }
 
 impl<A: Alphabet> FWPM<A> {
     /// Builds an empty [`FWPM`] with a given leading congruence and no mappings.
-    pub fn empty<O: ToOwned<Owned = RightCongruence<A>>>(leading: O) -> Self {
+    pub fn empty<O: ToOwned<Owned = RightCongruence<DTS<A>>>>(leading: O) -> Self {
         Self {
             leading: leading.to_owned(),
-            pm: math::OrderedMap::default(),
+            pm: std::collections::BTreeMap::default(),
         }
     }
 
@@ -35,7 +34,7 @@ impl<A: Alphabet> FWPM<A> {
     }
 
     /// Returns a reference to the underlying right congruence.
-    pub fn leading(&self) -> &RightCongruence<A> {
+    pub fn leading(&self) -> &RightCongruence<DTS<A>> {
         &self.leading
     }
 
@@ -43,9 +42,9 @@ impl<A: Alphabet> FWPM<A> {
     /// wrapped in a `Some` and returned. If no mapping was present, `None` is returned.
     pub fn insert_pm(
         &mut self,
-        index: StateIndex<RightCongruence<A>>,
-        pm: MooreMachine<A>,
-    ) -> Option<MooreMachine<A>> {
+        index: StateId,
+        pm: MooreMachine<DTS<A, Int, Void>>,
+    ) -> Option<MooreMachine<DTS<A, Int, Void>>> {
         self.pm.insert(index, pm)
     }
 
@@ -56,7 +55,7 @@ impl<A: Alphabet> FWPM<A> {
 
     /// Returns an iterator over the progress mealy machines, sorted by the index of the
     /// corresponding congruence class.
-    pub fn pms(&self) -> impl Iterator<Item = (StateIndex<RightCongruence<A>>, &MooreMachine<A>)> {
+    pub fn pms(&self) -> impl Iterator<Item = (StateId, &MooreMachine<DTS<A, Int, Void>>)> {
         self.pm
             .iter()
             .sorted_by(|x, y| x.0.cmp(y.0))
@@ -66,16 +65,16 @@ impl<A: Alphabet> FWPM<A> {
     /// Constructs a new FWPM from a given right congruence and map associating each class of the congruence
     /// with a priority mapping. Ensures that the each class has a priority mapping.
     pub fn new(
-        leading: RightCongruence<A>,
-        pm: math::OrderedMap<StateIndex<RightCongruence<A>>, MooreMachine<A>>,
+        leading: RightCongruence<DTS<A>>,
+        pm: std::collections::BTreeMap<StateId, MooreMachine<DTS<A, Int, Void>>>,
     ) -> Self {
         assert_eq!(
-            leading.size(),
+            leading.state_count(),
             pm.len(),
             "Mismatch in size of congruence and number of priority mappings"
         );
         assert!(
-            leading.state_indices().all(|q| pm.contains_key(&q)),
+            leading.states().all(|q| pm.contains_key(&q)),
             "Some classes of leading congruence do not have a priority mapping!"
         );
         Self { leading, pm }
@@ -84,13 +83,12 @@ impl<A: Alphabet> FWPM<A> {
 
 impl<A: Alphabet> Debug for FWPM<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\nleading right congruence\n{:?}", self.leading);
-        let names = self.leading.minimal_representatives();
+        write!(f, "\nleading right congruence\n{:?}", self.leading)?;
         for (i, prc) in self.pms() {
             write!(
                 f,
                 "\nprogress right congruence {i} for class {:?}\n{:?}",
-                names.get_by_left(&i).unwrap(),
+                self.leading.state_to_mr(i),
                 prc
             )?;
         }

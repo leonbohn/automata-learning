@@ -57,8 +57,8 @@ pub trait Sample<A: Alphabet> {
 #[allow(missing_docs)]
 pub struct SetSample<A: Alphabet, W: Word<Symbol = A::Symbol> + Hash> {
     pub alphabet: A,
-    pub positive: math::Set<W>,
-    pub negative: math::Set<W>,
+    pub positive: math::FxIndexSet<W>,
+    pub negative: math::FxIndexSet<W>,
 }
 
 /// Type alias for samples over the alphabet `A`, containing finite words which are classified with color `C`,
@@ -97,8 +97,8 @@ impl<A: Alphabet, W: Word<Symbol = A::Symbol>> SetSample<A, W> {
     pub fn new_for_alphabet(alphabet: A) -> Self {
         Self {
             alphabet,
-            positive: math::Set::default(),
-            negative: math::Set::default(),
+            positive: math::FxIndexSet::default(),
+            negative: math::FxIndexSet::default(),
         }
     }
 
@@ -231,9 +231,10 @@ where
 #[cfg(test)]
 mod tests {
     use crate::passive::SetSample;
-    use automata::TransitionSystem;
     use automata::alphabet::CharAlphabet;
-    use automata::representation::CollectTs;
+    use automata::ts::q;
+    use automata::{States, TransitionSystem};
+    use automata::representation::CollectPointed;
     use automata::upw;
     use automata::word::{PeriodicOmegaWord, Word};
     use itertools::Itertools;
@@ -304,7 +305,7 @@ mod tests {
         let cong = sample.infer_prefix_congruence().unwrap();
         let split = sample.split(&cong);
 
-        assert!(split.get(0).unwrap().contains(&upw!("b")));
+        assert!(split.get(q(0)).unwrap().contains(&upw!("b")));
     }
 
     #[test]

@@ -1,15 +1,9 @@
 use automata::alphabet::{Alphabet, CharAlphabet};
 use automata::automaton::{DBA, DFA, DPA, MealyMachine};
-use automata::representation::{CollectTs, IntoTs};
+use automata::representation::{CollectPointed, IntoTransitions};
 use automata::ts::Deterministic;
 use automata::ts::operations::Product;
-use automata::{
-    TransitionSystem,
-    ts::{
-        IndexedAlphabet,
-        operations::{DefaultIfMissing, MapStateColor},
-    },
-};
+use automata::{DTS, Int, Pointed, TransitionSystem, Void};
 use owo_colors::OwoColorize;
 use tracing::{debug, trace};
 
@@ -45,24 +39,20 @@ pub mod sprout;
 /// Executes the RPNI algorithm on the given sample. This returns a DFA that is
 /// composed of a right congruence as well as an acceptance condition, which marks
 /// a classes as accepting if it is reached by a positive sample word.
-pub fn dfa_rpni<A: Alphabet>(sample: &FiniteSample<A>) -> DFA<A> {
+pub fn dfa_rpni<A: Alphabet>(sample: &FiniteSample<A>) -> DFA<DTS<A, bool, Void>> {
     let cong = dpainf::dpainf(sample, vec![], true, None).unwrap();
     let accepting = sample
         .positive_words()
         .map(|w| {
-            (
-                cong.reached_state_index(w)
-                    .expect("Every positive word must induce a successful run!"),
-                true,
-            )
+            cong.reached_state(w)
+                .expect("Every positive word must induce a successful run!")
         })
-        .collect();
-    cong.with_state_color(DefaultIfMissing::new(accepting, false))
-        .into_dfa()
+        .collect::<Vec<_>>();
+    DFA::from_ts(cong, accepting).collect_dfa()
 }
 
 /// Executes a variant of the RPNI algorithm for omega-words, producing a DBA.
-pub fn dba_rpni<A: Alphabet>(sample: &OmegaSample<A>) -> DBA<A> {
+pub fn dba_rpni<A: Alphabet>(sample: &OmegaSample<A>) -> DBA<DTS<A, Void, bool>> {
     todo!()
 }
 
@@ -103,7 +93,7 @@ pub fn infer_precise_dpa<A: Alphabet>(
 }
 
 /// Similar to [`dba_rpni`], but produces a DPA instead.
-pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet>) -> DPA {
+pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet>) -> DPA<DTS<CharAlphabet, Void, Int>> {
     let precise = infer_precise_dpa(sample);
     let pta = sample.prefix_tree().erase_state_colors();
 
@@ -111,10 +101,9 @@ pub fn dpa_rpni(sample: &OmegaSample<CharAlphabet>) -> DPA {
         .ts_product(pta)
         .map_edge_colors(|(c, _)| c)
         .erase_state_colors();
-    let (completed, initial) = prod.trim_collect_pointed();
 
     //now we use the completed thing to learn a MealyMachine from which we can then build the DPA
-    let mm = completed.with_initial(initial).collect_mealy();
+    let mm = prod.reachable_part().collect_mealy();
 
     let alphabet = mm.alphabet().clone();
     let oracle = CompletingMealyOracle::new(mm, 0);
@@ -137,9 +126,9 @@ fn characterize_dpa(dpa: DPA) -> OmegaSample {
 #[cfg(test)]
 mod tests {
     use crate::passive::dpa_rpni;
-    use automata::TransitionSystem;
     use automata::alphabet::CharAlphabet;
-    use automata::representation::CollectTs;
+    use automata::{Pointed, States, TransitionSystem};
+    use automata::representation::CollectPointed;
     use automata::upw;
     use tracing::info;
 
@@ -177,11 +166,11 @@ mod tests {
         );
 
         let t = std::time::Instant::now();
-        let dpa = super::infer_precise_dpa(&sample).collect_dpa();
+        let dpa = super::infer_precise_dpa(&sample).reachable_part().collect_dpa();
         let full_duration = t.elapsed().as_millis();
         info!(
             "full construction of precise DPA size {} took {full_duration}ms",
-            dpa.size()
+            dpa.state_count()
         );
 
         let expected = [
@@ -202,7 +191,7 @@ mod tests {
         info!(
             "Full construction took {full_duration}ms, paper construction took {paper_duration}ms"
         );
-        assert!(dpa_mm.size() <= dpa.size());
+        assert!(dpa_mm.state_count() <= dpa.state_count());
 
         for (w, c) in expected {
             let b = dpa_mm.accepts(&w);

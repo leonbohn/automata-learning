@@ -1,7 +1,8 @@
 use crate::passive::dpainf::{dpainf, iteration_consistency_conflicts};
+use automata::DTS;
 use automata::alphabet::Alphabet;
 use automata::math;
-use automata::ts::{Deterministic, StateIndex};
+use automata::ts::{Deterministic, StateId};
 use automata::{Class, RightCongruence, families::FORC};
 use itertools::Itertools;
 
@@ -10,7 +11,7 @@ use super::{OmegaSample, SetSample};
 /// An [`OmegaSample`] restricted/split onto one [`Class`] of a [`RightCongruence`].
 #[derive(Clone)]
 pub struct ClassOmegaSample<'a, A: Alphabet> {
-    congruence: &'a RightCongruence<A>,
+    congruence: &'a RightCongruence<DTS<A>>,
     class: Class<A::Symbol>,
     sample: OmegaSample<A>,
 }
@@ -32,7 +33,7 @@ impl<A: Alphabet> std::ops::DerefMut for ClassOmegaSample<'_, A> {
 impl<'a, A: Alphabet> ClassOmegaSample<'a, A> {
     /// Creates a new [`ClassOmegaSample`] from a [`RightCongruence`], a [`Class`] and a [`SetSample`].
     pub fn new(
-        congruence: &'a RightCongruence<A>,
+        congruence: &'a RightCongruence<DTS<A>>,
         class: Class<A::Symbol>,
         sample: OmegaSample<A>,
     ) -> Self {
@@ -54,14 +55,14 @@ impl<'a, A: Alphabet> ClassOmegaSample<'a, A> {
     }
 
     /// Creates an empty [`ClassOmegaSample`] from a [`RightCongruence`], a [`Class`] and an alphabet.
-    pub fn empty(congruence: &'a RightCongruence<A>, class: Class<A::Symbol>, alphabet: A) -> Self {
+    pub fn empty(congruence: &'a RightCongruence<DTS<A>>, class: Class<A::Symbol>, alphabet: A) -> Self {
         Self {
             congruence,
             class,
             sample: SetSample {
                 alphabet,
-                positive: math::Set::default(),
-                negative: math::Set::default(),
+                positive: math::FxIndexSet::default(),
+                negative: math::FxIndexSet::default(),
             },
         }
     }
@@ -71,21 +72,21 @@ impl<'a, A: Alphabet> ClassOmegaSample<'a, A> {
 /// associated with each class of the congruence.
 #[derive(Clone)]
 pub struct SplitOmegaSample<'a, A: Alphabet> {
-    congruence: &'a RightCongruence<A>,
-    split: math::OrderedMap<StateIndex, ClassOmegaSample<'a, A>>,
+    congruence: &'a RightCongruence<DTS<A>>,
+    split: std::collections::BTreeMap<StateId, ClassOmegaSample<'a, A>>,
 }
 
 impl<'a, A: Alphabet> SplitOmegaSample<'a, A> {
     /// Creates a new object from the given congruence and the split
     pub fn new(
-        congruence: &'a RightCongruence<A>,
-        split: math::OrderedMap<StateIndex, ClassOmegaSample<'a, A>>,
+        congruence: &'a RightCongruence<DTS<A>>,
+        split: std::collections::BTreeMap<StateId, ClassOmegaSample<'a, A>>,
     ) -> Self {
         Self { congruence, split }
     }
 
     /// Obtain a reference to the split sample for the given class/index.
-    pub fn get(&self, index: StateIndex) -> Option<&ClassOmegaSample<'a, A>> {
+    pub fn get(&self, index: StateId) -> Option<&ClassOmegaSample<'a, A>> {
         self.split.get(&index)
     }
 
@@ -95,7 +96,7 @@ impl<'a, A: Alphabet> SplitOmegaSample<'a, A> {
     }
 
     /// Returns a reference to the underlying congruence.
-    pub fn cong(&self) -> &'a RightCongruence<A> {
+    pub fn cong(&self) -> &'a RightCongruence<DTS<A>> {
         self.congruence
     }
 }
@@ -104,7 +105,7 @@ impl<A: Alphabet> SplitOmegaSample<'_, A> {
     /// Infers a family of right congruences bz first constructing a conflict relation which is then used
     /// as a constraint for the sprout/glerc algorithm.
     pub fn infer_forc(&self) -> FORC<A> {
-        let conflict_relations: math::OrderedMap<_, _> = self
+        let conflict_relations: std::collections::BTreeMap<_, _> = self
             .classes()
             .map(|c| (c.clone(), iteration_consistency_conflicts(self, c.clone())))
             .collect();
@@ -113,7 +114,7 @@ impl<A: Alphabet> SplitOmegaSample<'_, A> {
             .into_iter()
             .map(|(c, conflicts)| {
                 (
-                    self.cong().reached_state_index(c).unwrap(),
+                    self.cong().reached_state(c).unwrap(),
                     dpainf(
                         conflicts,
                         vec![],

@@ -5,7 +5,7 @@ use automata::alphabet::Alphabet;
 use automata::ts::{ForAlphabet, Sproutable, SymbolOf};
 use automata::word::Concat;
 use automata::word::FiniteWord;
-use automata::{Show, math};
+use automata::math;
 use fixedbitset::FixedBitSet;
 use itertools::Itertools;
 use tracing::{debug, info, trace, warn};
@@ -22,14 +22,14 @@ pub struct LStar<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> {
     // the alphabet of what we are learning
     alphabet: D::Alphabet,
     // a mapping containing all queries that have been posed so far, together with their output
-    queries: RefCell<math::OrderedMap<Word<D>, D::Output>>,
+    queries: RefCell<std::collections::BTreeMap<Word<D>, D::Output>>,
     // the minimal access words forming the base states
     base: Vec<Word<D>>,
     // all known experiments
     experiments: Vec<Experiment<SymbolOf<D>>>,
     // mapping from input word to a bitset, where the i-th entry gives the value for
     // the output of concatenating input word and i-th experiment
-    table: math::OrderedMap<Word<D>, Vec<D::Output>>,
+    table: std::collections::BTreeMap<Word<D>, Vec<D::Output>>,
     // the oracle
     oracle: T,
     observations: ObservationTable<SymbolOf<D>, T::Output>,
@@ -44,9 +44,9 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
                 D::mandatory_experiments(&alphabet),
             ),
             alphabet,
-            queries: RefCell::new(math::OrderedMap::default()),
+            queries: RefCell::new(std::collections::BTreeMap::default()),
             base: vec![vec![]],
-            table: math::OrderedMap::default(),
+            table: std::collections::BTreeMap::default(),
             oracle,
         }
     }
@@ -95,7 +95,7 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
                 if val.len() != experiment_count {
                     panic!(
                         "Row for {} does not have enough entries, has {} of {experiment_count}",
-                        mr.show(),
+                        mr.as_string(),
                         val.len()
                     )
                 }
@@ -172,8 +172,8 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
         let start = std::time::Instant::now();
 
         let mut ts: DTS<_, _, _> = DTS::for_alphabet_size_hint(self.alphabet.clone(), 1);
-        let mut state_map = math::Map::default();
-        let mut observations = math::Map::default();
+        let mut state_map = math::FxIndexMap::default();
+        let mut observations = math::FxIndexMap::default();
 
         for mr in &self.base {
             let color = self.state_color(mr);
@@ -220,13 +220,12 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
                     self.table.get(*target).unwrap(),
                 );
 
-                let added = ts.add_edge((
+                ts.add_edge((
                     *i,
                     self.alphabet.make_expression(a),
                     color,
                     *state_map.get(target).unwrap(),
                 ));
-                assert!(added.is_none());
             }
         }
 
@@ -291,11 +290,11 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
             .unique()
     }
 
-    fn rows_to_promote(&self) -> math::Set<Word<D>> {
+    fn rows_to_promote(&self) -> math::FxIndexSet<Word<D>> {
         trace!("deciding which rows to promote: {:?}", self);
         let start = std::time::Instant::now();
 
-        let mut known = math::Set::from_iter(self.base.iter().map(|b| {
+        let mut known = math::FxIndexSet::from_iter(self.base.iter().map(|b| {
             self.table.get(b).unwrap_or_else(|| {
                 panic!(
                     "Experiment {} must be present",
@@ -304,7 +303,7 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet, Output = D::Output>> LStar
             })
         }));
         trace!("start promotion search with known rows: {known:?}");
-        let mut out = math::Set::default();
+        let mut out = math::FxIndexSet::default();
 
         for (word, seq) in self.table.iter() {
             if known.insert(seq) {
@@ -348,8 +347,8 @@ impl<D: Hypothesis, T: Oracle<Alphabet = D::Alphabet>> std::fmt::Debug for LStar
 #[cfg(test)]
 mod tests {
     use crate::active::{MealyOracle, MooreOracle, Oracle};
-    use automata::TransitionSystem;
     use automata::alphabet::CharAlphabet;
+    use automata::{States, TransitionSystem};
     use automata::automaton::{MealyMachine, MooreMachine};
     use rand::RngExt;
     use tracing::trace;
@@ -376,11 +375,11 @@ mod tests {
             let duration = start.elapsed().as_millis();
             trace!("learning took {} ms", duration);
 
-            if mm.size() != ts.size() {
+            if mm.state_count() != ts.state_count() {
                 panic!(
                     "Sizes don't match, expected {} got {}",
-                    ts.size(),
-                    mm.size()
+                    ts.state_count(),
+                    mm.state_count()
                 );
             }
         }
@@ -408,11 +407,11 @@ mod tests {
             let duration = start.elapsed().as_millis();
             trace!("learning took {} ms", duration);
 
-            if mm.size() != ts.size() {
+            if mm.state_count() != ts.state_count() {
                 panic!(
                     "Sizes don't match, expected {} got {}",
-                    ts.size(),
-                    mm.size()
+                    ts.state_count(),
+                    mm.state_count()
                 );
             }
         }

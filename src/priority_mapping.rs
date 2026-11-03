@@ -5,14 +5,12 @@ use owo_colors::OwoColorize;
 use automata::alphabet::{Alphabet, CharAlphabet, Symbol};
 use automata::automaton::{MealyMachine, MooreMachine};
 use automata::dag::Dag;
-use automata::representation::CollectTs;
-use automata::ts::StateIndex;
+use automata::representation::{CollectPointed, IntoTransitions};
+use automata::ts::operations::DefaultIfMissing;
+use automata::ts::{Sccs, StateId};
 use automata::word::FiniteWord;
-use automata::{Color, Int, Show, Void, math};
-use automata::{
-    RightCongruence, TransitionSystem,
-    dot::{DotStateAttribute, Dottable},
-};
+use automata::{Color, DTS, Int, Pointed, States, Void};
+use automata::{RightCongruence, TransitionSystem};
 
 /// A family of weak priority mappings (FWPM) is a pair (C, M) where C is a
 /// right congruence relation and for each class c of C, M_c is a Mealy machine.
@@ -21,7 +19,7 @@ use automata::{
 /// for all x and y.
 #[derive(Clone)]
 pub struct FamilyOfWeakPriorityMappings<A: Alphabet = CharAlphabet> {
-    cong: RightCongruence<A>,
+    cong: RightCongruence<DTS<A>>,
     pms: Vec<WeakPriorityMapping<A>>,
 }
 
@@ -29,29 +27,33 @@ impl<A: Alphabet> FamilyOfWeakPriorityMappings<A> {}
 
 /// A priority mapping is essentially a [`MealyMachine`], i.e. it reads
 /// finite words and ouptuts a priority (which in this case is a `usize`).
-pub type WeakPriorityMapping<A = CharAlphabet> = MealyMachine<A>;
+pub type WeakPriorityMapping<A = CharAlphabet> = MealyMachine<DTS<A, Void, Int>>;
 
 #[derive(Clone)]
 pub struct SubMapping<'ts, A: Alphabet> {
-    ts: &'ts RightCongruence<A>,
-    class: StateIndex,
-    mm: MealyMachine<A>,
+    ts: &'ts RightCongruence<DTS<A>>,
+    class: StateId,
+    mm: WeakPriorityMapping<A>,
 }
 
 impl<'ts, A: Alphabet> SubMapping<'ts, A> {
-    pub fn new(ts: &'ts RightCongruence<A>, class: StateIndex, mm: MealyMachine<A>) -> Self {
+    pub fn new(
+        ts: &'ts RightCongruence<DTS<A>>,
+        class: StateId,
+        mm: WeakPriorityMapping<A>,
+    ) -> Self {
         Self { ts, class, mm }
     }
 
-    pub fn cong(&self) -> &RightCongruence<A> {
+    pub fn cong(&self) -> &RightCongruence<DTS<A>> {
         self.ts
     }
 
-    pub fn class(&self) -> StateIndex {
+    pub fn class(&self) -> StateId {
         self.class
     }
 
-    pub fn mm(&self) -> &MealyMachine<A> {
+    pub fn mm(&self) -> &WeakPriorityMapping<A> {
         &self.mm
     }
 }
@@ -66,26 +68,17 @@ pub struct Annotation {
     pub(super) good: Option<bool>,
 }
 
-impl Show for Annotation {
-    fn show(&self) -> String {
-        if !self.idempotent {
-            "#".into()
+impl std::fmt::Display for Annotation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(if !self.idempotent {
+            "#"
         } else {
             match self.good {
-                Some(true) => "+".into(),
-                Some(false) => "-".into(),
-                None => "o".into(),
+                Some(true) => "+",
+                Some(false) => "-",
+                None => "o",
             }
-        }
-    }
-
-    fn show_collection<'a, I>(iter: I) -> String
-    where
-        Self: 'a,
-        I: IntoIterator<Item = &'a Self>,
-        I::IntoIter: DoubleEndedIterator,
-    {
-        todo!()
+        })
     }
 }
 
@@ -108,10 +101,12 @@ impl Annotation {
 /// This a simple newtype wrapper around a congruence, which has no edge colors and uses
 /// [`Annotation`]s as state colors.
 #[derive(Clone)]
-pub struct AnnotatedCongruence<A: Alphabet = CharAlphabet>(RightCongruence<A, Annotation, Void>);
+pub struct AnnotatedCongruence<A: Alphabet = CharAlphabet>(
+    RightCongruence<DTS<A, Annotation, Void>>,
+);
 
 impl<A: Alphabet> AnnotatedCongruence<A> {
-    pub fn new(rc: RightCongruence<A, Annotation, Void>) -> Self {
+    pub fn new(rc: RightCongruence<DTS<A, Annotation, Void>>) -> Self {
         Self(rc)
     }
 }
@@ -136,10 +131,10 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
     /// Computes the canonic coloring on a given annotated congruence. This makes use
     /// of the dag of strongly connected components of the congruence. For more information
     /// on how the computation is done exactly, see [Section 5, Step 2](https://arxiv.org/pdf/2302.11043.pdf).
-    pub fn canonic_coloring(&self) -> MooreMachine<A, Int> {
+    pub fn canonic_coloring(&self) -> MooreMachine<DTS<A, Int, Void>> {
         // we first need to decompose into sccs and mark them with the color of the
         // idempotent that it contains.
-        let tjdag = self.0.sccs();
+        let tjdag = Sccs::on(&self.0).compute();
         let mut dag: Dag<Result<usize, Option<bool>>> =
             tjdag.fold_state_colors(Err(None), |acc, x| match (acc, x.good) {
                 (Err(None), None) => Err(None),
@@ -149,7 +144,7 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
                 (Ok(_), _) => unreachable!(),
             });
 
-        let mut seen = math::OrderedSet::default();
+        let mut seen = std::collections::BTreeSet::default();
         'outer: loop {
             if dag.masked_is_empty(&seen) {
                 break 'outer;
@@ -176,9 +171,9 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             *dag.color_mut(t).expect("This node exists") = Ok(i + offset);
         }
 
-        let state_coloring: automata::math::Map<_, _> = self
+        let state_coloring: automata::math::FxIndexMap<_, _> = self
             .0
-            .state_indices()
+            .states()
             .map(|i| {
                 let scc = tjdag.scc_index_of(i).expect("Must be in an SCC");
                 let info = dag.color(*scc).expect("Must have worked on that SCC");
@@ -192,25 +187,22 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             .collect();
 
         (&self.0)
-            .map_edge_colors_full(|_q, _e, _c, p| {
-                let scc = tjdag.scc_index_of(p).expect("Must be in an SCC");
-                let info = dag.color(*scc).expect("Must have worked on that SCC");
-                info.expect("Every SCC must have a color")
-            })
-            .with_state_color(state_coloring)
-            .collect_moore()
+            .erase_edge_colors()
+            .with_state_color(DefaultIfMissing::new(state_coloring, 0))
+            .with_initial(self.0.initial())
+            .collect()
     }
 
     /// Takes a reference to a right congruence and a function that classifies idempotents
     /// of the congruence to construct an annotated congruence.
-    pub fn build<Q, C, F>(rc: &RightCongruence<A, Q, C>, f: F) -> Self
+    pub fn build<Q, C, F>(rc: &RightCongruence<DTS<A, Q, C>>, f: F) -> Self
     where
         Q: Color,
         C: Color,
         F: ClassifiesIdempotents<A>,
     {
-        let annotations: automata::math::Map<_, _> = rc
-            .state_indices()
+        let annotations: automata::math::FxIndexMap<_, _> = rc
+            .states()
             .map(|i| {
                 let cls = rc.state_to_mr(i).unwrap();
                 let out = if !cls.is_empty() && rc.is_idempotent(i) == Some(true) {
@@ -224,9 +216,10 @@ impl<A: Alphabet> AnnotatedCongruence<A> {
             .collect();
 
         Self::new(
-            rc.with_state_color(annotations)
-                .erase_edge_colors()
-                .collect_right_congruence(),
+            rc.erase_edge_colors()
+                .with_state_color(DefaultIfMissing::new(annotations, Annotation::default()))
+                .with_initial(rc.initial())
+                .collect(),
         )
     }
 }

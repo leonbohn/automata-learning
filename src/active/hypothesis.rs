@@ -1,8 +1,9 @@
 #![allow(missing_docs)]
 
 use super::{Experiment, Experiments};
+use std::hash::Hash;
 use automata::automaton::{MealyMachine, MooreMachine};
-use automata::ts::{Deterministic, StateIndex, SymbolOf};
+use automata::ts::{Deterministic, StateId, SymbolOf};
 use automata::{
     Color, Void,
     alphabet::{Alphabet, Symbol},
@@ -11,7 +12,7 @@ use automata::{
 use automata::{DTS, Pointed, TransitionSystem};
 
 pub trait Hypothesis: TransitionSystem + Deterministic + Pointed {
-    type Output: Color;
+    type Output: Color + Eq + Hash;
 
     fn output_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
         &self,
@@ -27,7 +28,7 @@ pub trait Hypothesis: TransitionSystem + Deterministic + Pointed {
 
     fn from_transition_system(
         ts: DTS<Self::Alphabet, Self::StateColor, Self::EdgeColor>,
-        initial: StateIndex,
+        initial: StateId,
     ) -> Self;
     fn give_state_color(
         mr: &[SymbolOf<Self>],
@@ -49,7 +50,7 @@ pub trait Hypothesis: TransitionSystem + Deterministic + Pointed {
     ) -> impl IntoIterator<Item = Experiment<SymbolOf<Self>>>;
 }
 
-impl<A: Alphabet, Q: Color> Hypothesis for MooreMachine<A, Q, Void> {
+impl<A: Alphabet, Q: Color + Eq + Hash> Hypothesis for MooreMachine<DTS<A, Q, Void>> {
     type Output = Q;
 
     fn output_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
@@ -57,12 +58,13 @@ impl<A: Alphabet, Q: Color> Hypothesis for MooreMachine<A, Q, Void> {
         input: W,
         source: Self::StateIndex,
     ) -> Self::Output {
-        self.reached_state_color_from(source, input)
+        self.run_from(source, input)
+            .reached_state_color()
             .expect("Hypothesis must be complete")
     }
     fn from_transition_system(
         ts: DTS<Self::Alphabet, Self::StateColor, Self::EdgeColor>,
-        initial: StateIndex,
+        initial: StateId,
     ) -> Self {
         Self::from_parts(ts, initial)
     }
@@ -99,7 +101,7 @@ impl<A: Alphabet, Q: Color> Hypothesis for MooreMachine<A, Q, Void> {
     }
 }
 
-impl<A: Alphabet, C: Color> Hypothesis for MealyMachine<A, Void, C> {
+impl<A: Alphabet, C: Color + Eq + Hash> Hypothesis for MealyMachine<DTS<A, Void, C>> {
     type Output = C;
 
     fn output_from<W: FiniteWord<Symbol = <Self::Alphabet as Alphabet>::Symbol>>(
@@ -107,12 +109,13 @@ impl<A: Alphabet, C: Color> Hypothesis for MealyMachine<A, Void, C> {
         input: W,
         source: Self::StateIndex,
     ) -> Self::Output {
-        self.last_edge_color_from(source, input)
+        self.run_from(source, input)
+            .last_edge_color()
             .expect("Hypothesis must be complete")
     }
     fn from_transition_system(
         ts: DTS<Self::Alphabet, Self::StateColor, Self::EdgeColor>,
-        initial: StateIndex,
+        initial: StateId,
     ) -> Self {
         Self::from_parts(ts, initial)
     }

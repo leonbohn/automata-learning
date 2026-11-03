@@ -12,7 +12,7 @@ impl<A: Alphabet> ClassifiesIdempotents<A> for PeriodicOmegaSample<A> {
 
 #[cfg(test)]
 mod tests {
-    use automata::TransitionSystem;
+    use automata::{States, TransitionSystem, ts::q};
 
     use crate::passive::dpainf::tests::testing_larger_forc_sample;
     use crate::priority_mapping::AnnotatedCongruence;
@@ -23,9 +23,9 @@ mod tests {
         let cong = sample.infer_prefix_congruence().unwrap();
         let split = sample.split(&cong);
         let forc = split.infer_forc();
-        let periodic = split.get(0).unwrap().to_periodic_sample();
+        let periodic = split.get(q(0)).unwrap().to_periodic_sample();
 
-        let annotated = AnnotatedCongruence::build(&forc[0], &periodic);
+        let annotated = AnnotatedCongruence::build(&forc[q(0)], &periodic);
 
         let coloring = annotated.canonic_coloring();
 
@@ -36,6 +36,6 @@ mod tests {
         for w in ["aba", "bbaba", "bbbbbabbaabbbbaaba"] {
             assert_eq!(coloring.transform(w), Some(0));
         }
-        assert_eq!(coloring.size(), 13);
+        assert_eq!(coloring.state_count(), 13);
     }
 }

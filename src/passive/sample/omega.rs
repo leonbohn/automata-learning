@@ -2,10 +2,10 @@ use std::{collections::VecDeque, io::BufRead};
 
 use automata::alphabet::{Alphabet, CharAlphabet};
 use automata::math;
-use automata::representation::CollectTs;
+use automata::representation::CollectPointed;
 use automata::ts::Deterministic;
 use automata::word::{OmegaWord, PeriodicOmegaWord, ReducedOmegaWord, ReducedParseError, Word};
-use automata::{Class, Pointed, RightCongruence, TransitionSystem};
+use automata::{Class, DTS, Pointed, RightCongruence, States, TransitionSystem};
 use either::Either;
 use itertools::Itertools;
 use thiserror::Error;
@@ -45,7 +45,7 @@ pub enum OmegaSampleParseError {
 }
 
 impl<A: Alphabet> OmegaSample<A> {
-    pub fn prefix_tree(&self) -> RightCongruence<A> {
+    pub fn prefix_tree(&self) -> RightCongruence<DTS<A>> {
         prefix_tree(self.alphabet().clone(), self.words())
             .erase_state_colors()
             .collect_right_congruence()
@@ -91,7 +91,7 @@ impl OmegaSample<CharAlphabet> {
             return Err(OmegaSampleParseError::MalformedSample);
         }
 
-        let mut words = math::Map::default();
+        let mut words = math::FxIndexMap::default();
         'positive: loop {
             match lines.next() {
                 Some(word) => {
@@ -187,7 +187,7 @@ impl<A: Alphabet> OmegaSample<A> {
 
     /// Computes the [`RightCongruence`] underlying the sample.
     #[allow(clippy::result_large_err)]
-    pub fn infer_prefix_congruence(&self) -> Result<RightCongruence<A>, DpaInfError<A>> {
+    pub fn infer_prefix_congruence(&self) -> Result<RightCongruence<DTS<A>>, DpaInfError<A>> {
         dpainf(prefix_consistency_conflicts(self), vec![], true, None)
     }
 }
@@ -196,8 +196,8 @@ impl<A: Alphabet> OmegaSample<A> {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct PeriodicOmegaSample<A: Alphabet> {
     alphabet: A,
-    positive: math::Set<PeriodicOmegaWord<A::Symbol>>,
-    negative: math::Set<PeriodicOmegaWord<A::Symbol>>,
+    positive: math::FxIndexSet<PeriodicOmegaWord<A::Symbol>>,
+    negative: math::FxIndexSet<PeriodicOmegaWord<A::Symbol>>,
 }
 
 impl<A: Alphabet> PeriodicOmegaSample<A> {
@@ -271,14 +271,14 @@ impl<A: Alphabet> OmegaSample<A> {
     }
 
     /// Splits the sample into a map of [`ClassOmegaSample`]s, one for each class of the underlying [`RightCongruence`].
-    pub fn split<'a>(&self, cong: &'a RightCongruence<A>) -> SplitOmegaSample<'a, A> {
+    pub fn split<'a>(&self, cong: &'a RightCongruence<DTS<A>>) -> SplitOmegaSample<'a, A> {
         debug_assert!(
-            cong.size() > 0,
+            cong.state_count() > 0,
             "Makes only sense for non-empty congruences"
         );
         let initial = cong.initial();
         // take self as is for epsilon
-        let mut split = math::OrderedMap::default();
+        let mut split = std::collections::BTreeMap::default();
         split.insert(
             initial,
             ClassOmegaSample::new(cong, Class::epsilon(), self.clone()),
@@ -292,7 +292,7 @@ impl<A: Alphabet> OmegaSample<A> {
             trace!("Processing word {:?} in state {}", word, state);
             let (sym, suffix) = word.pop_first();
             // unwrap okay because words are infinite
-            if let Some(reached) = cong.successor_index(state, sym) {
+            if let Some(reached) = cong.successor(state, sym) {
                 trace!("\tReached successor {reached}");
                 if split
                     .entry(reached)
