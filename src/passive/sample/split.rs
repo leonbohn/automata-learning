@@ -11,6 +11,8 @@ use super::{OmegaSample, SetSample};
 /// An [`OmegaSample`] restricted/split onto one [`Class`] of a [`RightCongruence`].
 #[derive(Clone)]
 pub struct ClassOmegaSample<'a, A: Alphabet> {
+    // placeholder: keeps the lifetime of the congruence, not read yet
+    #[allow(dead_code)]
     congruence: &'a RightCongruence<DTS<A>>,
     class: Class<A::Symbol>,
     sample: OmegaSample<A>,

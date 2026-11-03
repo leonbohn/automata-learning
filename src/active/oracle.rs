@@ -55,6 +55,8 @@ where
 #[derive(Debug, Clone)]
 pub struct SampleOracle<A: Alphabet, W: Word<Symbol = A::Symbol>> {
     sample: SetSample<A, W>,
+    // placeholder: `output` is not implemented yet
+    #[allow(dead_code)]
     default: bool,
 }
 

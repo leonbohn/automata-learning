@@ -283,6 +283,8 @@ impl<A: Alphabet> ConsistencyCheck<A> for () {
 /// This constraint ensures that the learned automaton separates idempotents.
 #[derive(Clone)]
 pub struct SeparatesIdempotents<'a, A: Alphabet> {
+    // placeholder: the constraint is not implemented yet
+    #[allow(dead_code)]
     sample: &'a ClassOmegaSample<'a, A>,
 }
 

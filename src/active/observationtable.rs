@@ -43,6 +43,8 @@ pub struct Representative<S>(pub(super) Vec<S>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutputRow<X>(pub(super) Vec<X>);
 
+// placeholder: the table is not used by `LStar` yet
+#[allow(dead_code)]
 pub struct ObservationTable<S, X> {
     pub(crate) experiments: Vec<Experiment<S>>,
     pub(crate) outputs: math::FxIndexMap<Representative<S>, OutputRow<X>>,
