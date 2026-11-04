@@ -1,10 +1,10 @@
 [package]
 name = "automata-learning"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
-description = "Passive and active learning algorithms for automata (RPNI-style sprout, DPAInf, L*)."
+description = "DEPRECATED, moved into the automata crate (feature `learning`): passive and active learning algorithms for automata."
 repository = "https://github.com/leonbohn/automata-learning"
-homepage = "https://github.com/leonbohn/automata-learning"
+homepage = "https://github.com/leonbohn/automata"
 readme = "README.md"
 license = "MIT"
 exclude = ["CLAUDE.md", "PLAN.md", ".github/", "scripts/"]
@@ -29,6 +29,9 @@ automata = { version = "0.1", features = ["hoa", "random", "render", "graphviz"]
 
 [dev-dependencies]
 test-log = { version = "0.2.17", features = ["trace"] }
+
+[badges]
+maintenance = { status = "deprecated" }
 
 [package.metadata.docs.rs]
 all-features = true
